@@ -415,7 +415,8 @@ function parseSteps(text){ const steps=[], loose=[]; let title="", numbered=fals
     let body=(m.length===3?m[2]:m[1]).replace(/\*\*|__/g,"").trim(), type="Work Content";
     let b=body.match(/^\[([^\]]+)\]\s*(.*)$/) || body.match(/^\(([^)]+)\)\s*(.*)$/) || body.match(/^([A-Za-z ]{4,12})\s*:\s*(.*)$/);
     if(b && typeRe.test(b[1].trim())){ type=norm(b[1].trim()); body=b[2].trim(); }
-    body=body.replace(/\*\*/g,"").replace(/\s+\((?:[^()]*(?:no picture|cycle time|wastes:)[^()]*)\)\s*$/i,"").trim(); steps.push({type,caption:body}); }
+    let src=null; const sm=body.match(/^\{\s*([\d,\s–\-]+)\}\s*(.*)$/); if(sm){ src=[]; for(const part of sm[1].split(",")){ const rg=part.trim().match(/^(\d+)\s*[–-]\s*(\d+)$/); if(rg){ for(let n=+rg[1];n<=+rg[2];n++) src.push(n); } else if(/^\d+$/.test(part.trim())) src.push(+part.trim()); } body=sm[2].trim(); }
+    body=body.replace(/\*\*/g,"").replace(/\s+\((?:[^()]*(?:no picture|cycle time|wastes:)[^()]*)\)\s*$/i,"").trim(); steps.push({type,caption:body,src}); }
   if(!steps.length) for(const l of loose){ let body=l.replace(/^[-*\u2022]\s+/,"").replace(/\*\*/g,""), type="Work Content"; const b=body.match(/^\[([^\]]+)\]\s*(.*)$/);
     if(b&&/^(work\s*content|work|check|verify|safety|quality)$/i.test(b[1].trim())){ const t=b[1].trim().toLowerCase(); type=t.startsWith("work")?"Work Content":t[0].toUpperCase()+t.slice(1); body=b[2]; } if(body.trim()) steps.push({type,caption:body.trim()}); }
   return {title,steps}; }
@@ -463,6 +464,7 @@ CHECKS:
 OUTPUT FORMAT:
 - Put the whole answer in one code block so it copies exactly.
 - One step per line, numbered 1. 2. 3., each starting with its type in brackets: [Work Content], [Check], [Verify], [Safety] or [Quality]. Keep each original step's type; for a bundled step use [Verify] or [Safety] if any merged action is a check or safety item, otherwise [Work Content].
+- Right after the type, put in braces the ORIGINAL step number(s) this line came from: {2} for one step, {2,3} for a bundled step. StepSheet reads this to keep each step's photo, then removes it. So a line reads: 1. [Work Content] {2,3} Position PORT RAIL on JIG and CLAMP.
 - First line: Title: <document title>
 - After the steps, add a section "## What was improved" listing only real wording and bundling changes.`;
 function vwiSourceText(){ const s=stepsText(); return VWI_PROMPT+"\n\n---\nMy current steps to reformat:\n\n"+s; }
@@ -486,7 +488,7 @@ function copilotMenu(btn){
       else modal(`<h2>Copy steps</h2><p>Select all (Ctrl+A) and copy (Ctrl+C):</p><textarea readonly>${esc(t)}</textarea><div class="acts"><button class="lbtn primary" data-x>Done</button></div>`,(d,c)=>{ d.querySelector("textarea").select(); d.querySelector("[data-x]").onclick=c; }); }
     if(k==="prompt") modal(`<h2>Copilot prompt</h2><p>Paste this into Microsoft 365 Copilot, fill in the job, then bring its answer back with <b>Paste steps from Copilot</b>.</p><textarea id="pr">${esc(COPILOT_PROMPT)}</textarea><div class="acts"><button class="lbtn" data-x>Close</button><button class="lbtn primary" data-c>Copy prompt</button></div>`,
       (d,c)=>{ d.querySelector("[data-x]").onclick=c; d.querySelector("[data-c]").onclick=async()=>{ const ta=d.querySelector("textarea"); if(await copyText(ta.value)) toast("Prompt copied"); else { ta.select(); toast("Press Ctrl+C to copy"); } }; });
-    if(k==="vwi"){ const t=vwiSourceText(); modal(`<h2>Reformat steps (VWI format)</h2><p>Paste this into Microsoft 365 Copilot. It rewrites your steps to your VWI standard and <b>bundles actions that can share one picture</b> into a single step. Bring the answer back with <b>Paste steps from Copilot</b> &rarr; <b>Add as new steps</b> (bundling can change the step count, so a one-to-one replace won't line up).</p><textarea id="vw">${esc(t)}</textarea><div class="acts"><button class="lbtn" data-x>Close</button><button class="lbtn primary" data-c>Copy</button></div>`,
+    if(k==="vwi"){ const t=vwiSourceText(); modal(`<h2>Reformat steps (VWI format)</h2><p>Paste this into Microsoft 365 Copilot. It rewrites your steps to your VWI standard and <b>bundles actions that can share one picture</b> into a single step. Bring the answer back with <b>Paste steps from Copilot</b> &rarr; <b>Review &amp; replace</b>, then accept or skip each step. Photos stay with their step, even where actions were bundled.</p><textarea id="vw">${esc(t)}</textarea><div class="acts"><button class="lbtn" data-x>Close</button><button class="lbtn primary" data-c>Copy</button></div>`,
       (d,c)=>{ d.querySelector("[data-x]").onclick=c; d.querySelector("[data-c]").onclick=async()=>{ const ta=d.querySelector("textarea"); if(await copyText(ta.value)) toast("Copied. Paste into Copilot."); else { ta.select(); toast("Press Ctrl+C to copy"); } }; }); }
     if(k==="paste") pasteDialog();
     if(k==="csv"){ const base=(D.name||"untitled").replace(/\.soe$/i,""); const r=await saveBlob(base+" steps.csv",new Blob([csvText()],{type:"text/csv"}),[{description:"CSV",accept:{"text/csv":[".csv"]}}]); if(r.status==="saved") toast("Saved "+r.name); }
@@ -497,16 +499,56 @@ function pasteDialog(){
   modal(`<h2>Paste steps from Copilot</h2><p>Paste a numbered list. A type in brackets at the start of a step sets its quality: <code>[Work Content]</code>, <code>[Check]</code>, <code>[Verify]</code>, <code>[Safety]</code>, <code>[Quality]</code>. A <code>Title:</code> line sets the header title.</p>
     <textarea id="pasteBox" placeholder="Title: Standard Rail Layout&#10;1. [Safety] Wear REQUIRED P.P.E&#10;2. [Work Content] Mark STBD and PORT DOGHOUSE LOCATIONS"></textarea>
     <p class="hint" id="pastePrev">Nothing pasted yet.</p>
-    <div class="acts"><button class="lbtn" data-x>Cancel</button><button class="lbtn" data-a="replace">Replace text of existing steps</button><button class="lbtn primary" data-a="append">Add as new steps</button></div>`,
+    <div class="acts"><button class="lbtn" data-x>Cancel</button><button class="lbtn" data-a="append">Add to bottom</button><button class="lbtn primary" data-a="review">Review &amp; replace…</button></div>`,
   (d,close)=>{ const ta=d.querySelector("textarea"), pv=d.querySelector("#pastePrev");
     ta.oninput=()=>{ const r=parseSteps(ta.value); pv.textContent=r.steps.length?`${r.steps.length} steps found`+(r.title?`, title "${r.title}"`:"")+`. First: [${r.steps[0].type}] ${r.steps[0].caption.slice(0,80)}`:"No numbered steps found yet."; };
     d.querySelector("[data-x]").onclick=close;
     d.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{ const r=parseSteps(ta.value); if(!r.steps.length){ toast("No numbered steps found"); return; }
+      if(b.dataset.a==="append"){ if(r.title) D.header.udc1=r.title; const start=D.tasks.length===1&&!D.tasks[0].caption&&!D.tasks[0].image_id?0:D.tasks.length; if(start===0) D.tasks=[];
+        r.steps.forEach(s=>{ const t=blankTask(D.default_ppp); t.caption=s.caption; t.tasktype=s.type; D.tasks.push(t); }); close(); changed(true); toast(`Added ${r.steps.length} steps`); }
+      else { close(); reviewPaste(r); } }); });
+}
+// Review & approve each reformatted step before it replaces the current ones. Maps new->old by the
+// {n} source tags the VWI prompt emits (falls back to position), so each kept step keeps its photo.
+function reviewPaste(r){
+  const old=D.tasks.slice();
+  const srcOf=(s,i)=>{ let a=(s.src&&s.src.length)?s.src.map(n=>n-1):[i]; return a.filter(j=>j>=0&&j<old.length); };
+  const rows=r.steps.map((s,i)=>{ const si=srcOf(s,i);
+    const now=si.map(j=>(old[j].caption||"").replace(/\s+/g," ").trim()).filter(Boolean);
+    const o0=si.length?old[si[0]]:null; const img=(o0&&o0.image_id&&D.images[o0.image_id])?imgURL(o0.image_id):"";
+    const label=si.length>1?`bundles steps ${si.map(j=>j+1).join(", ")}`:(si.length===1?`from step ${si[0]+1}`:"new step");
+    const typeChg=(si.length===1&&old[si[0]].tasktype!==s.type)?` · ${esc(old[si[0]].tasktype)} &rarr; ${esc(s.type)}`:"";
+    const changed=now.join(" ")!==(s.caption||"").trim()||!!typeChg||si.length!==1;
+    return {s,si,now,img,label,typeChg,changed,i}; });
+  const html=rows.map(w=>`<div class="revrow">
+      <label class="revck"><input type="checkbox" ${w.changed?"checked":""} data-c="${w.i}"> Apply</label>
+      <div class="revbody">
+        <div class="revmeta">${shapeSVG(w.s.type,null,16)}<b>New ${w.i+1}</b><span class="hint">${esc(w.label)}${w.typeChg}</span></div>
+        ${w.now.length?`<div class="revnow"><span class="rl">Now</span>${esc(w.now.join("   /   "))}</div>`:`<div class="revnow"><span class="rl">Now</span><i class="hint">no original — brand-new step</i></div>`}
+        <div class="revnew"><span class="rl">VWI</span>${esc(w.s.caption)}</div>
+      </div>
+      ${w.img?`<img class="revthumb" src="${w.img}" alt="">`:`<span class="revthumb nopic">no photo</span>`}
+    </div>`).join("");
+  modal(`<h2>Review reformatted steps</h2>
+    <p class="hint">Checked rows get the new VWI wording. Uncheck any step to keep it exactly as it is now. Photos stay with their step.</p>
+    <div class="revtools"><button class="lbtn" data-all="1">Check all</button><button class="lbtn" data-all="0">Uncheck all</button><span class="hint" id="revcount"></span></div>
+    <div class="revlist">${html||"<p>No steps found.</p>"}</div>
+    <div class="acts"><button class="lbtn" data-x>Cancel</button><button class="lbtn primary" data-apply>Apply</button></div>`,
+  (d,close)=>{
+    const upd=()=>{ const n=d.querySelectorAll("[data-c]:checked").length; const el=d.querySelector("#revcount"); if(el) el.textContent=`${n} of ${r.steps.length} will change`; };
+    d.querySelectorAll("[data-all]").forEach(b=>b.onclick=()=>{ d.querySelectorAll("[data-c]").forEach(c=>c.checked=b.dataset.all==="1"); upd(); });
+    d.addEventListener("change",upd); upd();
+    d.querySelector("[data-x]").onclick=close;
+    d.querySelector("[data-apply]").onclick=()=>{
       if(r.title) D.header.udc1=r.title;
-      if(b.dataset.a==="append"){ const start=D.tasks.length===1&&!D.tasks[0].caption&&!D.tasks[0].image_id?0:D.tasks.length; if(start===0) D.tasks=[];
-        r.steps.forEach(s=>{ const t=blankTask(D.default_ppp); t.caption=s.caption; t.tasktype=s.type; D.tasks.push(t); }); toast(`Added ${r.steps.length} steps`); }
-      else { r.steps.forEach((s,i)=>{ if(!D.tasks[i]) D.tasks.push(blankTask(D.default_ppp)); D.tasks[i].caption=s.caption; D.tasks[i].tasktype=s.type; }); toast(`Updated ${r.steps.length} steps; pictures kept`); }
-      close(); changed(true); }); });
+      const on=new Set([...d.querySelectorAll("[data-c]:checked")].map(c=>+c.dataset.c)), seen=new Set(), next=[];
+      rows.forEach(w=>{ w.si.forEach(j=>seen.add(j));
+        if(on.has(w.i)){ const t=blankTask(D.default_ppp); t.caption=w.s.caption; t.tasktype=w.s.type; const o=w.si.length?old[w.si[0]]:null;
+          if(o){ t.image_id=o.image_id; t.image_title=o.image_title; t.image_path=o.image_path; t.pics_per_page=o.pics_per_page; t.font_size=o.font_size; if(w.si.length<=1) t.cycletime=o.cycletime; } next.push(t); }
+        else w.si.forEach(j=>next.push(old[j])); });
+      old.forEach((o,j)=>{ if(!seen.has(j)) next.push(o); });  // never silently drop an original
+      D.tasks=next.length?next:old; close(); changed(true); toast(`Applied ${on.size} of ${r.steps.length} changes`); };
+  });
 }
 
 /* ===================================================================== UI */
