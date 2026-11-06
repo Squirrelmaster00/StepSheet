@@ -1,0 +1,50 @@
+# ─── Work / proprietary content — never commit ───────────────────────────────
+# Real work instructions, photos, and exported documents stay out of the repo.
+*.soe
+*.pdf
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+*.heic
+# Allow only the repo's own graphics (icons, an original demo image).
+!extension/icons/*.png
+!docs/**/*.png
+!assets/**/*.png
+
+# ─── Secrets / environment ───────────────────────────────────────────────────
+.env
+.env.*
+*.local
+secrets.*
+*.pem
+*.key
+*.p12
+*.crx          # packed browser extensions (signing keys live here — never commit)
+*.pem
+
+# ─── Node / build tooling (if you ever add any) ──────────────────────────────
+node_modules/
+dist/
+build/
+coverage/
+.cache/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ─── AI / editor / OS scratch files ──────────────────────────────────────────
+.aider*
+.cursor/
+.claude/
+.continue/
+*.orig
+*.bak
+*.tmp
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
