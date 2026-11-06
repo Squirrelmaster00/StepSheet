@@ -1,4 +1,4 @@
-<!--
+<!doctype html><html lang="en"><head><!--
   StepSheet — offline work-instruction editor and PDF exporter (.soe format)
   https://github.com/Squirrelmaster00/StepSheet
 
@@ -9,8 +9,7 @@
   See AI-USAGE.md. Independent implementation of the .soe format — not affiliated
   with, endorsed by, or derived from any other application. Brand names in the
   terminology glossary belong to their respective owners (identification only).
--->
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body><title>StepSheet</title>
+--><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body><title>StepSheet</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
 /* Layout: one-screen work tool. Dark toolbar band, tab strip, scrolling step grid, status line. */
@@ -273,8 +272,15 @@ function blankDoc(){ const d={name:"untitled.soe",url:"",version:"4.0",header:Ob
 const isT=v=>String(v).trim().toLowerCase()==="true";
 
 function parseSoe(text){
-  const x=new DOMParser().parseFromString(text,"application/xml");
-  if(x.getElementsByTagName("parsererror").length) throw new Error("This doesn't look like a .soe work instruction file.");
+  if(!text || text.length<30 || text.indexOf("<mainroot")===-1)
+    throw new Error("This file looks empty or isn't a .soe file. If it's in OneDrive, open it once in the OneDrive app so it finishes downloading, then try again.");
+  // Split the heavy <imageroot> (base64 photos) off before building the DOM, so large
+  // files open on memory-limited phones. Photos are pulled out by a light text scan below.
+  let mainText=text, imagesText="";
+  const iStart=text.indexOf("<imageroot");
+  if(iStart!==-1){ let iEnd=text.indexOf("</imageroot>"); iEnd=iEnd===-1?text.length:iEnd+12; imagesText=text.slice(iStart,iEnd); mainText=text.slice(0,iStart)+"</roots>"; }
+  const x=new DOMParser().parseFromString(mainText,"application/xml");
+  if(x.getElementsByTagName("parsererror").length) throw new Error("This file couldn't be read — it may be damaged, or (from OneDrive) may not have finished downloading. Open it in the OneDrive app first, then try again.");
   const kid=(el,name)=>el?[...el.children].find(c=>c.tagName===name):null;
   const g=(el,path,def="")=>{ let e=el; for(const p of path.split("/")){ e=kid(e,p); if(!e) return def; } return e.textContent; };
   const root=x.documentElement, m=kid(root,"mainroot");
@@ -299,8 +305,8 @@ function parseSoe(text){
       for(const grp of ["Setup","Work"]) task[grp.toLowerCase()]=Object.fromEntries(["selected","machine","labor"].map(k=>[k,isT(g(a,grp+"/"+k,"false"))]));
       task.value_added=isT(g(a,"ValueAdded","false")); task.non_value_added=isT(g(a,"NonValueAdded","false")); task.tqc=isT(g(a,"TQC","false")); }
     d.tasks.push(task); }
-  const imgs=kid(kid(root,"imageroot"),"images");
-  if(imgs) for(const e of imgs.children){ const b=e.textContent.replace(/\s+/g,""); if(b) d.images[e.tagName]=b; }
+  if(imagesText){ const re=/<([A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12})>([\s\S]*?)<\/\1>/g; let im;
+    while((im=re.exec(imagesText))){ const b=im[2].replace(/\s+/g,""); if(b) d.images[im[1]]=b; } }
   return d;
 }
 function serializeSoe(d){
@@ -550,7 +556,9 @@ async function saveBlob(name,blob,types){ // returns "saved" | "cancelled" | "fa
     catch(e){ if(e&&e.code==="declined") return {status:"cancelled"}; toast("This view can't save files: "+(e&&e.message||e),5000); return {status:"failed"}; } }
   anchorSave(name,blob); return {status:"saved",name,download:true};
 }
-async function readSoeFile(file){ const buf=await file.arrayBuffer(); const text=new TextDecoder("iso-8859-1").decode(buf); const d=parseSoe(text); d.name=file.name||d.name; return d; }
+async function readSoeFile(file){ const buf=await file.arrayBuffer();
+  if(!buf||buf.byteLength===0) throw new Error("This file is empty. If it's in OneDrive, tap it in the OneDrive app first so it downloads to the phone, then open it here.");
+  const text=new TextDecoder("iso-8859-1").decode(buf); const d=parseSoe(text); d.name=file.name||d.name; return d; }
 function loadDoc(d,handle){ clearURLs(); D=d; fileHandle=handle||null; dirty=false; sel=new Set([0]); lastClick=0; render(); scheduleDraft(true); }
 async function doOpen(){
   if(!(await confirmDiscard())) return;
@@ -561,7 +569,9 @@ async function doOpen(){
   }
   $("#soeInput").value=""; $("#soeInput").click();
 }
-async function openFromFile(f){ try{ loadDoc(await readSoeFile(f)); toast("Opened "+f.name); }catch(e){ toast("Couldn't open "+f.name+": "+e.message,5000); } }
+async function openFromFile(f){ try{ loadDoc(await readSoeFile(f)); toast("Opened "+f.name); }
+  catch(e){ let diag=""; try{ const buf=await f.arrayBuffer(); const head=new TextDecoder("iso-8859-1").decode(buf.slice(0,40)).replace(/\s+/g," ").trim(); diag=` [${buf.byteLength} bytes; starts: "${head}"]`; }catch(_){}
+    toast("Couldn't open "+f.name+": "+e.message+diag,12000); } }
 async function doSave(as){
   const bytes=serializeSoe(D);
   if(!as && fileHandle && fileHandle.createWritable){

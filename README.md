@@ -51,6 +51,22 @@ The `extension/` folder is a toolbar button that opens the editor in a tab. Load
 via `chrome://extensions` → **Developer mode** → **Load unpacked**. It is the same app
 as `StepSheet.html`; the HTML file alone is fully functional without it.
 
+## Install on your phone or desktop (offline)
+
+StepSheet is a Progressive Web App, so it can be installed and run offline — no app
+store, and no network connection needed after the first load.
+
+1. Open the hosted `index.html` once in a browser (for example, GitHub Pages).
+2. **iPhone/iPad (Safari):** tap the **Share** button → **Add to Home Screen**.
+   **Android/desktop (Chrome/Edge):** use **Install** / **Add to Home screen** from the
+   browser menu (or the install icon in the address bar).
+3. Launch it from the home screen. It runs full-screen, from the device's cache, with
+   your files staying local.
+
+Because it runs from the installed cache, it keeps working on networks that would
+otherwise block or interfere with the page. To ship an update, change the app and bump
+the `CACHE` version string in `sw.js`.
+
 ## Project structure
 
 ```
