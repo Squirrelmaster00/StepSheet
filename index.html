@@ -1,4 +1,5 @@
-<!doctype html><html lang="en"><head><!--
+<!doctype html><html lang="en"><head>
+<!--
   StepSheet — offline work-instruction editor and PDF exporter (.soe format)
   https://github.com/Squirrelmaster00/StepSheet
 
@@ -628,7 +629,9 @@ function stepsText(){ const h=D.header; const lines=[];
 function parseSteps(text){ const steps=[], loose=[]; let title="", numbered=false;
   const typeRe=/^(work\s*content|work|check|verify|safety|quality)$/i;
   const norm=s=>{ s=s.toLowerCase().replace(/\s+/g," "); return s.startsWith("work")?"Work Content":s[0].toUpperCase()+s.slice(1); };
-  for(let raw of tidy(text).split(/\r?\n/)){ let s=raw.trim().replace(/^#+\s*/,"").replace(/^\*\*(.*)\*\*$/,"$1"); if(!s) continue;
+  for(let raw of tidy(text).split(/\r?\n/)){
+    if(numbered && (/^\s*#{2,6}\s+\S/.test(raw) || /^\s*(#{1,6}\s*)?what\s+was\s+improved/i.test(raw))) break;
+    let s=raw.trim().replace(/^#+\s*/,"").replace(/^\*\*(.*)\*\*$/,"$1"); if(!s) continue;
     const tm=s.match(/^title\s*:\s*(.+)$/i); if(tm){ title=tm[1].trim(); continue; }
     if(/^document\s*:/i.test(s)) continue;
     const m=s.match(/^(?:step\s*)?(\d+)\s*[.):\-]\s*(.*)$/i) || s.match(/^[-*]\s+(.*)$/);
@@ -660,6 +663,34 @@ Format rules:
 - Keep each step under 20 words. Put part names and tools in CAPS.
 - Start with a [Safety] step for PPE.
 - First line: Title: <document title>`;
+const VWI_PROMPT=`Reformat these manufacturing work-instruction steps into clean Visual Work Instruction (VWI) steps. Improve HOW each step is written. Do NOT change the process, the order, or any technical detail.
+
+PICTURES COME FIRST (most important):
+- Each step becomes one slide with one picture, so BUNDLE actions that can be shown in a SINGLE picture into one step instead of splitting them across steps.
+- Only bundle actions that share the same picture and the same location/setup. Never fold a quality check or a safety warning into another step - keep those as their own step.
+- When you bundle, preserve every hardware item, size, quantity, measurement, tool, warning and check from the originals.
+
+WRITING RULES:
+- Start each step with an ACTION VERB (Position, Install, Insert, Secure, Route, Drill, Measure, Mark, Align, Apply, Connect, Tighten, Verify, Inspect, Lower, Lift, Cut).
+- Put part names and tools in CAPS (RAIL, PANEL, HARNESS, CROSSMEMBER, BOLT, NUT, BRACKET, JIG); do not CAPS ordinary connecting words.
+- Keep each step short and floor-friendly; let the picture carry the visual detail.
+
+PRESERVE EXACTLY - never drop, round, approximate or invent:
+- Hardware sizes, quantities and part numbers; drill / hole-saw / socket / wrench sizes; measurements (4", 3/8", 2-1/2", 35 IN-LBS, 20 AMP); torque; spacing; fuse ratings; wire and hose lengths.
+- PORT / STBD, BOW / AFT, MID, FRONT / REAR, DOGHOUSE, CROSSMEMBER numbers (CROSSMEMBER -2, CROSSMEMBER 4), RAIL JOINT and other locations.
+- DRAWING references ("per DRAWING"), JIG usage, special tools, and model / option conditions (POWERSHADE, CASSETTE ARCH, DIRECT FILL, QX RAILS, "CASSETTE ARCH BOATS ONLY", "NOT REQUIRED FOR DIRECT FILL BOATS").
+- Warnings and DO NOT instructions - keep them; do not soften critical ones.
+- If a value is a placeholder (#BOLT, ???, TBD), keep the placeholder; never guess.
+
+CHECKS:
+- Use VERIFY for any inspection or acceptance step and tag it [Verify]. Include the corrective action if the original had one.
+
+OUTPUT FORMAT:
+- Put the whole answer in one code block so it copies exactly.
+- One step per line, numbered 1. 2. 3., each starting with its type in brackets: [Work Content], [Check], [Verify], [Safety] or [Quality]. Keep each original step's type; for a bundled step use [Verify] or [Safety] if any merged action is a check or safety item, otherwise [Work Content].
+- First line: Title: <document title>
+- After the steps, add a section "## What was improved" listing only real wording and bundling changes.`;
+function vwiSourceText(){ const s=stepsText(); return VWI_PROMPT+"\n\n---\nMy current steps to reformat:\n\n"+s; }
 async function copyText(text){ try{ await navigator.clipboard.writeText(text); return true; }catch(e){ return false; } }
 
 /* ===================================================================== modal */
@@ -673,13 +704,15 @@ function copilotMenu(btn){
   document.querySelectorAll(".menu").forEach(m=>m.remove());
   const r=btn.getBoundingClientRect(); const m=document.createElement("div"); m.className="menu";
   m.style.top=(r.bottom+4)+"px"; m.style.left=Math.max(8,Math.min(r.left,innerWidth-260))+"px";
-  m.innerHTML=`<button data-m="copy">Copy steps for Copilot</button><button data-m="paste">Paste steps from Copilot…</button><button data-m="prompt">Copilot prompt for new steps…</button><button data-m="csv">Export steps to Excel (.csv)</button>`;
+  m.innerHTML=`<button data-m="copy">Copy steps for Copilot</button><button data-m="paste">Paste steps from Copilot…</button><button data-m="prompt">Copilot prompt for new steps…</button><button data-m="vwi">Reformat &amp; bundle steps (VWI)…</button><button data-m="csv">Export steps to Excel (.csv)</button>`;
   document.body.appendChild(m);
   m.onclick=async e=>{ const k=e.target.dataset.m; if(!k) return; m.remove();
     if(k==="copy"){ const t=stepsText(); if(await copyText(t)) toast("Steps copied. Paste them into Copilot.");
       else modal(`<h2>Copy steps</h2><p>Select all (Ctrl+A) and copy (Ctrl+C):</p><textarea readonly>${esc(t)}</textarea><div class="acts"><button class="lbtn primary" data-x>Done</button></div>`,(d,c)=>{ d.querySelector("textarea").select(); d.querySelector("[data-x]").onclick=c; }); }
     if(k==="prompt") modal(`<h2>Copilot prompt</h2><p>Paste this into Microsoft 365 Copilot, fill in the job, then bring its answer back with <b>Paste steps from Copilot</b>.</p><textarea id="pr">${esc(COPILOT_PROMPT)}</textarea><div class="acts"><button class="lbtn" data-x>Close</button><button class="lbtn primary" data-c>Copy prompt</button></div>`,
       (d,c)=>{ d.querySelector("[data-x]").onclick=c; d.querySelector("[data-c]").onclick=async()=>{ const ta=d.querySelector("textarea"); if(await copyText(ta.value)) toast("Prompt copied"); else { ta.select(); toast("Press Ctrl+C to copy"); } }; });
+    if(k==="vwi"){ const t=vwiSourceText(); modal(`<h2>Reformat steps (VWI format)</h2><p>Paste this into Microsoft 365 Copilot. It rewrites your steps to your VWI standard and <b>bundles actions that can share one picture</b> into a single step. Bring the answer back with <b>Paste steps from Copilot</b> &rarr; <b>Add as new steps</b> (bundling can change the step count, so a one-to-one replace won't line up).</p><textarea id="vw">${esc(t)}</textarea><div class="acts"><button class="lbtn" data-x>Close</button><button class="lbtn primary" data-c>Copy</button></div>`,
+      (d,c)=>{ d.querySelector("[data-x]").onclick=c; d.querySelector("[data-c]").onclick=async()=>{ const ta=d.querySelector("textarea"); if(await copyText(ta.value)) toast("Copied. Paste into Copilot."); else { ta.select(); toast("Press Ctrl+C to copy"); } }; }); }
     if(k==="paste") pasteDialog();
     if(k==="csv"){ const base=(D.name||"untitled").replace(/\.soe$/i,""); const r=await saveBlob(base+" steps.csv",new Blob([csvText()],{type:"text/csv"}),[{description:"CSV",accept:{"text/csv":[".csv"]}}]); if(r.status==="saved") toast("Saved "+r.name); }
   };

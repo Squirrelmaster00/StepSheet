@@ -48,8 +48,15 @@ function blankDoc(){ const d={name:"untitled.soe",url:"",version:"4.0",header:Ob
 const isT=v=>String(v).trim().toLowerCase()==="true";
 
 function parseSoe(text){
-  const x=new DOMParser().parseFromString(text,"application/xml");
-  if(x.getElementsByTagName("parsererror").length) throw new Error("This doesn't look like a .soe work instruction file.");
+  if(!text || text.length<30 || text.indexOf("<mainroot")===-1)
+    throw new Error("This file looks empty or isn't a .soe file. If it's in OneDrive, open it once in the OneDrive app so it finishes downloading, then try again.");
+  // Split the heavy <imageroot> (base64 photos) off before building the DOM, so large
+  // files open on memory-limited phones. Photos are pulled out by a light text scan below.
+  let mainText=text, imagesText="";
+  const iStart=text.indexOf("<imageroot");
+  if(iStart!==-1){ let iEnd=text.indexOf("</imageroot>"); iEnd=iEnd===-1?text.length:iEnd+12; imagesText=text.slice(iStart,iEnd); mainText=text.slice(0,iStart)+"</roots>"; }
+  const x=new DOMParser().parseFromString(mainText,"application/xml");
+  if(x.getElementsByTagName("parsererror").length) throw new Error("This file couldn't be read — it may be damaged, or (from OneDrive) may not have finished downloading. Open it in the OneDrive app first, then try again.");
   const kid=(el,name)=>el?[...el.children].find(c=>c.tagName===name):null;
   const g=(el,path,def="")=>{ let e=el; for(const p of path.split("/")){ e=kid(e,p); if(!e) return def; } return e.textContent; };
   const root=x.documentElement, m=kid(root,"mainroot");
@@ -74,8 +81,8 @@ function parseSoe(text){
       for(const grp of ["Setup","Work"]) task[grp.toLowerCase()]=Object.fromEntries(["selected","machine","labor"].map(k=>[k,isT(g(a,grp+"/"+k,"false"))]));
       task.value_added=isT(g(a,"ValueAdded","false")); task.non_value_added=isT(g(a,"NonValueAdded","false")); task.tqc=isT(g(a,"TQC","false")); }
     d.tasks.push(task); }
-  const imgs=kid(kid(root,"imageroot"),"images");
-  if(imgs) for(const e of imgs.children){ const b=e.textContent.replace(/\s+/g,""); if(b) d.images[e.tagName]=b; }
+  if(imagesText){ const re=/<([A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12})>([\s\S]*?)<\/\1>/g; let im;
+    while((im=re.exec(imagesText))){ const b=im[2].replace(/\s+/g,""); if(b) d.images[im[1]]=b; } }
   return d;
 }
 function serializeSoe(d){
@@ -325,7 +332,9 @@ async function saveBlob(name,blob,types){ // returns "saved" | "cancelled" | "fa
     catch(e){ if(e&&e.code==="declined") return {status:"cancelled"}; toast("This view can't save files: "+(e&&e.message||e),5000); return {status:"failed"}; } }
   anchorSave(name,blob); return {status:"saved",name,download:true};
 }
-async function readSoeFile(file){ const buf=await file.arrayBuffer(); const text=new TextDecoder("iso-8859-1").decode(buf); const d=parseSoe(text); d.name=file.name||d.name; return d; }
+async function readSoeFile(file){ const buf=await file.arrayBuffer();
+  if(!buf||buf.byteLength===0) throw new Error("This file is empty. If it's in OneDrive, tap it in the OneDrive app first so it downloads to the phone, then open it here.");
+  const text=new TextDecoder("iso-8859-1").decode(buf); const d=parseSoe(text); d.name=file.name||d.name; return d; }
 function loadDoc(d,handle){ clearURLs(); D=d; fileHandle=handle||null; dirty=false; sel=new Set([0]); lastClick=0; render(); scheduleDraft(true); }
 async function doOpen(){
   if(!(await confirmDiscard())) return;
@@ -336,7 +345,9 @@ async function doOpen(){
   }
   $("#soeInput").value=""; $("#soeInput").click();
 }
-async function openFromFile(f){ try{ loadDoc(await readSoeFile(f)); toast("Opened "+f.name); }catch(e){ toast("Couldn't open "+f.name+": "+e.message,5000); } }
+async function openFromFile(f){ try{ loadDoc(await readSoeFile(f)); toast("Opened "+f.name); }
+  catch(e){ let diag=""; try{ const buf=await f.arrayBuffer(); const head=new TextDecoder("iso-8859-1").decode(buf.slice(0,40)).replace(/\s+/g," ").trim(); diag=` [${buf.byteLength} bytes; starts: "${head}"]`; }catch(_){}
+    toast("Couldn't open "+f.name+": "+e.message+diag,12000); } }
 async function doSave(as){
   const bytes=serializeSoe(D);
   if(!as && fileHandle && fileHandle.createWritable){
@@ -393,7 +404,9 @@ function stepsText(){ const h=D.header; const lines=[];
 function parseSteps(text){ const steps=[], loose=[]; let title="", numbered=false;
   const typeRe=/^(work\s*content|work|check|verify|safety|quality)$/i;
   const norm=s=>{ s=s.toLowerCase().replace(/\s+/g," "); return s.startsWith("work")?"Work Content":s[0].toUpperCase()+s.slice(1); };
-  for(let raw of tidy(text).split(/\r?\n/)){ let s=raw.trim().replace(/^#+\s*/,"").replace(/^\*\*(.*)\*\*$/,"$1"); if(!s) continue;
+  for(let raw of tidy(text).split(/\r?\n/)){
+    if(numbered && (/^\s*#{2,6}\s+\S/.test(raw) || /^\s*(#{1,6}\s*)?what\s+was\s+improved/i.test(raw))) break;
+    let s=raw.trim().replace(/^#+\s*/,"").replace(/^\*\*(.*)\*\*$/,"$1"); if(!s) continue;
     const tm=s.match(/^title\s*:\s*(.+)$/i); if(tm){ title=tm[1].trim(); continue; }
     if(/^document\s*:/i.test(s)) continue;
     const m=s.match(/^(?:step\s*)?(\d+)\s*[.):\-]\s*(.*)$/i) || s.match(/^[-*]\s+(.*)$/);
@@ -425,6 +438,34 @@ Format rules:
 - Keep each step under 20 words. Put part names and tools in CAPS.
 - Start with a [Safety] step for PPE.
 - First line: Title: <document title>`;
+const VWI_PROMPT=`Reformat these manufacturing work-instruction steps into clean Visual Work Instruction (VWI) steps. Improve HOW each step is written. Do NOT change the process, the order, or any technical detail.
+
+PICTURES COME FIRST (most important):
+- Each step becomes one slide with one picture, so BUNDLE actions that can be shown in a SINGLE picture into one step instead of splitting them across steps.
+- Only bundle actions that share the same picture and the same location/setup. Never fold a quality check or a safety warning into another step - keep those as their own step.
+- When you bundle, preserve every hardware item, size, quantity, measurement, tool, warning and check from the originals.
+
+WRITING RULES:
+- Start each step with an ACTION VERB (Position, Install, Insert, Secure, Route, Drill, Measure, Mark, Align, Apply, Connect, Tighten, Verify, Inspect, Lower, Lift, Cut).
+- Put part names and tools in CAPS (RAIL, PANEL, HARNESS, CROSSMEMBER, BOLT, NUT, BRACKET, JIG); do not CAPS ordinary connecting words.
+- Keep each step short and floor-friendly; let the picture carry the visual detail.
+
+PRESERVE EXACTLY - never drop, round, approximate or invent:
+- Hardware sizes, quantities and part numbers; drill / hole-saw / socket / wrench sizes; measurements (4", 3/8", 2-1/2", 35 IN-LBS, 20 AMP); torque; spacing; fuse ratings; wire and hose lengths.
+- PORT / STBD, BOW / AFT, MID, FRONT / REAR, DOGHOUSE, CROSSMEMBER numbers (CROSSMEMBER -2, CROSSMEMBER 4), RAIL JOINT and other locations.
+- DRAWING references ("per DRAWING"), JIG usage, special tools, and model / option conditions (POWERSHADE, CASSETTE ARCH, DIRECT FILL, QX RAILS, "CASSETTE ARCH BOATS ONLY", "NOT REQUIRED FOR DIRECT FILL BOATS").
+- Warnings and DO NOT instructions - keep them; do not soften critical ones.
+- If a value is a placeholder (#BOLT, ???, TBD), keep the placeholder; never guess.
+
+CHECKS:
+- Use VERIFY for any inspection or acceptance step and tag it [Verify]. Include the corrective action if the original had one.
+
+OUTPUT FORMAT:
+- Put the whole answer in one code block so it copies exactly.
+- One step per line, numbered 1. 2. 3., each starting with its type in brackets: [Work Content], [Check], [Verify], [Safety] or [Quality]. Keep each original step's type; for a bundled step use [Verify] or [Safety] if any merged action is a check or safety item, otherwise [Work Content].
+- First line: Title: <document title>
+- After the steps, add a section "## What was improved" listing only real wording and bundling changes.`;
+function vwiSourceText(){ const s=stepsText(); return VWI_PROMPT+"\n\n---\nMy current steps to reformat:\n\n"+s; }
 async function copyText(text){ try{ await navigator.clipboard.writeText(text); return true; }catch(e){ return false; } }
 
 /* ===================================================================== modal */
@@ -438,13 +479,15 @@ function copilotMenu(btn){
   document.querySelectorAll(".menu").forEach(m=>m.remove());
   const r=btn.getBoundingClientRect(); const m=document.createElement("div"); m.className="menu";
   m.style.top=(r.bottom+4)+"px"; m.style.left=Math.max(8,Math.min(r.left,innerWidth-260))+"px";
-  m.innerHTML=`<button data-m="copy">Copy steps for Copilot</button><button data-m="paste">Paste steps from Copilot…</button><button data-m="prompt">Copilot prompt for new steps…</button><button data-m="csv">Export steps to Excel (.csv)</button>`;
+  m.innerHTML=`<button data-m="copy">Copy steps for Copilot</button><button data-m="paste">Paste steps from Copilot…</button><button data-m="prompt">Copilot prompt for new steps…</button><button data-m="vwi">Reformat &amp; bundle steps (VWI)…</button><button data-m="csv">Export steps to Excel (.csv)</button>`;
   document.body.appendChild(m);
   m.onclick=async e=>{ const k=e.target.dataset.m; if(!k) return; m.remove();
     if(k==="copy"){ const t=stepsText(); if(await copyText(t)) toast("Steps copied. Paste them into Copilot.");
       else modal(`<h2>Copy steps</h2><p>Select all (Ctrl+A) and copy (Ctrl+C):</p><textarea readonly>${esc(t)}</textarea><div class="acts"><button class="lbtn primary" data-x>Done</button></div>`,(d,c)=>{ d.querySelector("textarea").select(); d.querySelector("[data-x]").onclick=c; }); }
     if(k==="prompt") modal(`<h2>Copilot prompt</h2><p>Paste this into Microsoft 365 Copilot, fill in the job, then bring its answer back with <b>Paste steps from Copilot</b>.</p><textarea id="pr">${esc(COPILOT_PROMPT)}</textarea><div class="acts"><button class="lbtn" data-x>Close</button><button class="lbtn primary" data-c>Copy prompt</button></div>`,
       (d,c)=>{ d.querySelector("[data-x]").onclick=c; d.querySelector("[data-c]").onclick=async()=>{ const ta=d.querySelector("textarea"); if(await copyText(ta.value)) toast("Prompt copied"); else { ta.select(); toast("Press Ctrl+C to copy"); } }; });
+    if(k==="vwi"){ const t=vwiSourceText(); modal(`<h2>Reformat steps (VWI format)</h2><p>Paste this into Microsoft 365 Copilot. It rewrites your steps to your VWI standard and <b>bundles actions that can share one picture</b> into a single step. Bring the answer back with <b>Paste steps from Copilot</b> &rarr; <b>Add as new steps</b> (bundling can change the step count, so a one-to-one replace won't line up).</p><textarea id="vw">${esc(t)}</textarea><div class="acts"><button class="lbtn" data-x>Close</button><button class="lbtn primary" data-c>Copy</button></div>`,
+      (d,c)=>{ d.querySelector("[data-x]").onclick=c; d.querySelector("[data-c]").onclick=async()=>{ const ta=d.querySelector("textarea"); if(await copyText(ta.value)) toast("Copied. Paste into Copilot."); else { ta.select(); toast("Press Ctrl+C to copy"); } }; }); }
     if(k==="paste") pasteDialog();
     if(k==="csv"){ const base=(D.name||"untitled").replace(/\.soe$/i,""); const r=await saveBlob(base+" steps.csv",new Blob([csvText()],{type:"text/csv"}),[{description:"CSV",accept:{"text/csv":[".csv"]}}]); if(r.status==="saved") toast("Saved "+r.name); }
   };
