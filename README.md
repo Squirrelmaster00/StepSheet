@@ -86,3 +86,6 @@ synthetic sample for demos.
 [MIT](LICENSE) © 2026 StepSheet contributors. Any brand or product names a user adds to the
 terminology glossary belong to their respective owners and are
 used for identification only.
+
+See [`NOTICE.md`](NOTICE.md) for the project's independence, interoperability, and
+warranty statements.
