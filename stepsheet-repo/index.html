@@ -569,7 +569,9 @@ async function doOpen(){
   }
   $("#soeInput").value=""; $("#soeInput").click();
 }
-async function openFromFile(f){ try{ loadDoc(await readSoeFile(f)); toast("Opened "+f.name); }catch(e){ toast("Couldn't open "+f.name+": "+e.message,5000); } }
+async function openFromFile(f){ try{ loadDoc(await readSoeFile(f)); toast("Opened "+f.name); }
+  catch(e){ let diag=""; try{ const buf=await f.arrayBuffer(); const head=new TextDecoder("iso-8859-1").decode(buf.slice(0,40)).replace(/\s+/g," ").trim(); diag=` [${buf.byteLength} bytes; starts: "${head}"]`; }catch(_){}
+    toast("Couldn't open "+f.name+": "+e.message+diag,12000); } }
 async function doSave(as){
   const bytes=serializeSoe(D);
   if(!as && fileHandle && fileHandle.createWritable){
