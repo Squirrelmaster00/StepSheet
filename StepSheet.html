@@ -1,0 +1,949 @@
+<!--
+  StepSheet — offline work-instruction editor and PDF exporter (.soe format)
+  https://github.com/Squirrelmaster00/StepSheet
+
+  Copyright (c) 2026 StepSheet contributors
+  Licensed under the MIT License. See LICENSE.
+
+  Portions generated with an AI coding assistant and reviewed/edited by the author.
+  See AI-USAGE.md. Independent implementation of the .soe format — not affiliated
+  with, endorsed by, or derived from any other application. Brand names in the
+  terminology glossary belong to their respective owners (identification only).
+-->
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body><title>StepSheet</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one-screen work tool. Dark toolbar band, tab strip, scrolling step grid, status line. */
+:root{
+  --bg:#e9ecf1; --panel:#ffffff; --panel2:#f5f7fa; --ink:#1b222c; --muted:#5f6b7a; --line:#d3d9e1; --line2:#e6e9ee;
+  --bar:#232d3b; --bar-ink:#f3f5f8; --bar-btn:#323e50; --bar-line:#4a5870;
+  --accent:#1d5fae; --accent-ink:#ffffff; --sel:#e1ecfb; --danger:#b3261e; --ok:#2e7d32; --focus:#8ab6ee;
+  --scrim:rgba(18,24,33,.45);
+  --font:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --mono:Consolas,"Cascadia Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161c; --panel:#1a2029; --panel2:#202734; --ink:#e7ebf1; --muted:#9aa5b4; --line:#323c4b; --line2:#272f3b;
+  --bar:#0d1117; --bar-ink:#e7ebf1; --bar-btn:#222b38; --bar-line:#39465a;
+  --accent:#4b8fe0; --accent-ink:#0b1320; --sel:#22344d; --danger:#ef8a80; --ok:#7cc47f; --focus:#4b8fe0; --scrim:rgba(0,0,0,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161c; --panel:#1a2029; --panel2:#202734; --ink:#e7ebf1; --muted:#9aa5b4; --line:#323c4b; --line2:#272f3b;
+  --bar:#0d1117; --bar-ink:#e7ebf1; --bar-btn:#222b38; --bar-line:#39465a;
+  --accent:#4b8fe0; --accent-ink:#0b1320; --sel:#22344d; --danger:#ef8a80; --ok:#7cc47f; --focus:#4b8fe0; --scrim:rgba(0,0,0,.6); color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+@supports (height:100dvh){ body{height:100dvh} }
+body{margin:0;font:13px/1.4 var(--font);color:var(--ink);background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.bar{background:var(--bar);color:var(--bar-ink);padding-block:7px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:6px}
+.bar-top{display:flex;align-items:center;gap:10px;min-width:0}
+.brand{font-weight:700;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.mark{width:20px;height:20px;flex:none}
+.file{opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+.file .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ffb020;margin-left:6px;vertical-align:middle}
+.tb{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.sep{width:1px;height:22px;background:var(--bar-line);margin:0 3px}
+.btn{border:1px solid var(--bar-line);background:var(--bar-btn);color:var(--bar-ink);border-radius:5px;padding:4px 9px;cursor:pointer;white-space:nowrap}
+.btn:hover{filter:brightness(1.15)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.tabs{display:flex;gap:2px;padding-top:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow-x:auto;flex:none}
+.tabs button{border:1px solid var(--line);border-bottom:none;background:var(--panel2);padding:7px 14px;border-radius:7px 7px 0 0;cursor:pointer;color:var(--muted);white-space:nowrap}
+.tabs button.on{background:var(--panel);color:var(--ink);font-weight:600}
+.mainwrap{flex:1;min-height:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex}
+main{flex:1;min-width:0;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:0 7px 0 0}
+.status{padding-block:5px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));color:var(--muted);font-size:12px;display:flex;gap:14px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+table.grid{border-collapse:collapse;width:100%}
+.grid th{position:sticky;top:0;background:var(--panel2);border-bottom:1px solid var(--line);text-align:left;font-weight:600;padding:7px 8px;z-index:2;white-space:nowrap}
+.grid td{border-bottom:1px solid var(--line2);padding:6px 8px;vertical-align:top}
+.grid tr.sel td{background:var(--sel)}
+.grid td.num{width:44px;text-align:center;font-weight:700;color:var(--muted);cursor:pointer;user-select:none;vertical-align:middle;font-variant-numeric:tabular-nums}
+.thumb{width:168px;height:100px;border:1px dashed var(--line);border-radius:5px;display:flex;align-items:center;justify-content:center;background:var(--panel2);position:relative;overflow:hidden;cursor:pointer;color:var(--muted);font-size:12px;text-align:center}
+.thumb img{max-width:100%;max-height:100%;display:block}
+.thumb.drop{border-color:var(--accent);border-style:solid}
+.thumb .x{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.65);color:#fff;border:none;border-radius:3px;width:22px;height:22px;cursor:pointer;display:none}
+.thumb:hover .x,.thumb:focus-within .x{display:block}
+.typesel{display:flex;align-items:center;gap:6px}
+select.s,input.f,textarea.cap{border:1px solid var(--line);border-radius:5px;background:var(--panel);padding:4px 6px}
+textarea.cap{width:100%;min-height:72px;resize:vertical;padding:6px 8px;line-height:1.35}
+.capmeta{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12px;margin-top:4px;flex-wrap:wrap}
+.ro{max-width:560px}
+input.small{width:90px}
+td.c,th.c{text-align:center}
+tfoot td{font-weight:600;background:var(--panel2);border-top:1px solid var(--line)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;flex-wrap:wrap}
+.seg label{padding:4px 9px;cursor:pointer;border-right:1px solid var(--line);white-space:nowrap}
+.seg label:last-child{border-right:none}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label:has(input:checked){background:var(--sel);font-weight:600}
+.seg label:has(input:focus-visible){outline:2px solid var(--focus);outline-offset:-2px}
+.chart{padding:14px 16px}
+.review{padding:16px 20px;max-width:900px;line-height:1.55}
+.review h2{font-size:18px;margin:10px 0 6px;text-wrap:balance}
+.review ol{padding-left:28px;display:grid;gap:6px}
+.review li{padding-left:4px}
+.chip{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600;white-space:nowrap;border:1px solid var(--line)}
+.chip.ok{color:var(--ok)}
+.chip.miss{color:var(--muted)}
+.chip.warn{color:#a15c00;border-color:#d99a3b}
+.chip.stale{color:var(--danger);border-color:var(--danger)}
+.esgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:6px 16px;margin-top:8px}
+.revbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
+h3{margin:2px 0 10px;font-size:14px}
+.opts{padding:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:16px}
+.card{border:1px solid var(--line);border-radius:8px;padding:14px;min-width:0}
+.fr{display:grid;grid-template-columns:140px minmax(0,1fr);gap:6px 10px;align-items:center;margin-bottom:6px}
+.fr>label{color:var(--muted)}
+.fr input.f,.fr select{width:100%}
+.chk{display:flex;gap:7px;align-items:center;margin:4px 0}
+.logoprev{height:46px;max-width:170px;border:1px solid var(--line);border-radius:4px;padding:3px;background:#fff;object-fit:contain}
+.lbtn{border:1px solid var(--line);background:var(--panel);border-radius:5px;padding:4px 10px;cursor:pointer}
+.lbtn:hover{background:var(--panel2)}
+.lbtn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.lbtn.danger{color:var(--danger)}
+.hint{color:var(--muted);font-size:12px}
+.empty{padding:48px 16px;text-align:center;color:var(--muted);display:flex;flex-direction:column;gap:12px;align-items:center}
+.empty .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.toast{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--bar);color:var(--bar-ink);padding:9px 14px;border-radius:7px;box-shadow:0 6px 20px rgba(0,0,0,.25);opacity:0;transition:opacity .2s;pointer-events:none;max-width:min(560px,80vw);z-index:50}
+.toast.on{opacity:1}
+.modal{position:fixed;inset:0;background:var(--scrim);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
+.modal[hidden]{display:none!important}
+.dlg{background:var(--panel);border:1px solid var(--line);border-radius:10px;max-width:720px;width:100%;max-height:90vh;overflow:auto;padding:18px;box-shadow:0 18px 50px rgba(0,0,0,.3)}
+.dlg h2{margin:0 0 8px;font-size:16px}
+.dlg p{margin:6px 0}
+.dlg textarea{width:100%;min-height:220px;border:1px solid var(--line);border-radius:6px;padding:8px;font:12.5px/1.45 var(--mono);background:var(--panel2)}
+.dlg .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+.menu{position:absolute;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:30;min-width:240px;padding:4px 0}
+.menu button{display:block;width:100%;text-align:left;border:none;background:none;padding:7px 12px;cursor:pointer}
+.menu button:hover{background:var(--sel)}
+.stepno{display:none}
+.mobbar{display:none}
+/* Phones and small tablets: steps become cards, toolbar swipes sideways, row tools sit at the bottom. */
+@media (max-width:760px){
+  body{font-size:15px}
+  .bar{padding-block:6px}
+  .bar-top .file{font-size:13px}
+  .tb{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin-inline:-4px;padding-inline:4px;padding-bottom:2px}
+  .tb::-webkit-scrollbar{display:none}
+  .tb .rowtool,.tb .sep:last-of-type{display:none}
+  .btn{padding:8px 12px;font-size:14px}
+  .tabs{padding-top:6px} .tabs button{padding:9px 13px}
+  main{border-radius:0 7px 0 0}
+  .status{display:none}
+  .mobbar{display:grid;grid-template-columns:repeat(6,1fr);background:var(--bar);border-top:1px solid var(--bar-line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);flex:none}
+  .mobbar button{background:none;border:none;color:var(--bar-ink);padding:7px 2px 6px;font-size:17px;line-height:1.1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
+  .mobbar button span{font-size:11px;opacity:.85}
+  .mobbar button:disabled{opacity:.35}
+  input,select,textarea,.f,.s,textarea.cap{font-size:16px!important}
+  select.s,input.f{min-height:40px}
+  .grid thead{display:none}
+  .grid,.grid tbody,.grid tfoot{display:block;width:100%}
+  .grid tr{display:flex;flex-wrap:wrap;gap:8px 10px;padding:12px 14px;border-bottom:8px solid var(--bg);background:var(--panel)}
+  .grid tr.sel{box-shadow:inset 4px 0 0 var(--accent)}
+  .grid tr.sel td{background:transparent}
+  .grid td{display:block;border:none;padding:0;flex:1 1 100%;min-width:0}
+  .grid td[data-label]::before{content:attr(data-label);display:block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+  .grid td.num{flex:1 1 100%;width:auto;text-align:left;font-size:15px;color:var(--ink);padding:2px 0}
+  .stepno{display:inline}
+  .grid td.half{flex:1 1 calc(50% - 5px)}
+  .grid td.half select{width:100%}
+  .grid td.c{flex:0 0 auto;display:flex;flex-direction:row-reverse;align-items:center;justify-content:flex-end;gap:6px;border:1px solid var(--line);border-radius:6px;padding:7px 10px}
+  .grid td.c::before{margin:0!important;font-size:12px!important;text-transform:none!important;letter-spacing:0!important;color:var(--ink)!important;font-weight:500!important}
+  .grid td.c input{width:20px;height:20px;margin:0}
+  .grid td.ro{font-weight:500;max-width:none}
+  .grid tfoot tr{border-bottom:none} .grid tfoot td:empty{display:none}
+  .thumb{width:100%;height:auto;aspect-ratio:16/10;max-height:260px}
+  .thumb .x{display:block;width:34px;height:34px;font-size:18px}
+  .typesel{gap:8px} .typesel select{flex:1}
+  textarea.cap{min-height:84px}
+  .capmeta{font-size:13px}
+  .seg label{padding:8px 10px}
+  .opts{padding:12px} .card{padding:12px}
+  .fr{grid-template-columns:1fr}
+  .review{padding:14px}
+  .revbar .lbtn,.lbtn{padding:8px 12px}
+  .chart{padding:12px}
+  .dlg{padding:14px;max-height:calc(100dvh - 32px)}
+  .dlg textarea{min-height:180px}
+  .toast{bottom:calc(70px + env(safe-area-inset-bottom,0px));left:16px;right:16px;max-width:none}
+  .menu{left:8px!important;right:8px;min-width:0}
+  .menu button{padding:12px 14px}
+}
+@media (max-width:760px) and (orientation:landscape){ .thumb{max-height:180px} }
+@media (prefers-reduced-motion:reduce){ .toast{transition:none} }
+</style>
+
+<header class="bar">
+  <div class="bar-top">
+    <div class="brand"><svg class="mark" viewBox="0 0 20 20" aria-hidden="true"><rect x="1" y="1" width="8" height="8" fill="none" stroke="#FFFF00" stroke-width="2"/><circle cx="15" cy="5" r="4" fill="none" stroke="#5b8cff" stroke-width="2"/><polygon points="5,11 9,19 1,19" fill="none" stroke="#FF3B30" stroke-width="2" stroke-linejoin="round"/><polygon points="15,10.5 19.5,15 15,19.5 10.5,15" fill="none" stroke="#FF6347" stroke-width="2"/></svg>StepSheet</div>
+    <div class="file" id="fname"></div>
+  </div>
+  <div class="tb" id="tb">
+    <button class="btn" data-act="new">New</button>
+    <button class="btn" data-act="open">Open…</button>
+    <button class="btn" data-act="save" title="Ctrl+S">Save</button>
+    <button class="btn" data-act="saveas">Save As…</button>
+    <span class="sep"></span>
+    <button class="btn primary" data-act="pdf">Create Instructions PDF</button>
+    <button class="btn" data-act="soe">Create SOE PDF</button>
+    <button class="btn" data-act="pdfes" title="Instructions PDF with the Spanish text">Spanish PDF</button>
+    <span class="sep"></span>
+    <button class="btn" data-act="copilot" title="Copy, paste or export steps as text">Copilot / Excel ▾</button>
+    <span class="sep"></span>
+    <button class="btn rowtool" data-act="add">+ Row</button>
+    <button class="btn rowtool" data-act="insert">Insert Above</button>
+    <button class="btn rowtool" data-act="dup">Duplicate</button>
+    <button class="btn rowtool" data-act="up" aria-label="Move up">▲</button>
+    <button class="btn rowtool" data-act="down" aria-label="Move down">▼</button>
+    <button class="btn rowtool" data-act="del">Delete</button>
+  </div>
+</header>
+<nav class="tabs" id="tabs">
+  <button data-tab="vi" class="on">Steps</button>
+  <button data-tab="cv">Cycle / Value</button>
+  <button data-tab="act">Activity</button>
+  <button data-tab="waste">Wastes</button>
+  <button data-tab="opt">Options</button>
+  <button data-tab="es" title="Spanish translation">Spanish</button>
+  <button data-tab="review" title="Plain-text view for Copilot in the Edge sidebar">Review</button>
+</nav>
+<div class="mainwrap"><main id="main"></main></div>
+<div class="status" id="status"></div>
+<nav class="mobbar" aria-label="Row tools">
+  <button class="rowtool" data-act="add">＋<span>Step</span></button>
+  <button class="rowtool" data-act="insert">⤒<span>Insert</span></button>
+  <button class="rowtool" data-act="dup">⧉<span>Copy</span></button>
+  <button class="rowtool" data-act="up" aria-label="Move up">▲<span>Up</span></button>
+  <button class="rowtool" data-act="down" aria-label="Move down">▼<span>Down</span></button>
+  <button class="rowtool" data-act="del">✕<span>Delete</span></button>
+</nav>
+<div class="toast" id="toast" role="status"></div>
+<div class="modal" id="modal" hidden><div class="dlg" id="dlg" role="dialog" aria-modal="true"></div></div>
+<input type="file" id="imgInput" accept="image/*" multiple hidden>
+<input type="file" id="logoInput" accept="image/*" hidden>
+<input type="file" id="soeInput" accept=".soe,.xml" hidden>
+
+<script>
+"use strict";
+/* ===================================================================== constants */
+const TASK_TYPES=["Work Content","Check","Verify","Safety","Quality"];
+// Types the original .soe program doesn't know: saved as their fallback type plus a <customtype> field the old program skips.
+const CUSTOM_TYPES={Quality:"Safety"};
+const PAGE_TYPES=["1 Picture Landscape","2 Picture Portrait","4 Picture Landscape","4 Picture Portrait","6 Picture Landscape","6 Picture Portrait","9 Picture Portrait"];
+const WASTES=["overproduction","overprocessing","waiting","transport","inventory","operatormovement","defects"];
+const WASTE_NAMES={overproduction:"Overproduction",overprocessing:"Overprocessing",waiting:"Waiting",transport:"Transport",inventory:"Inventory",operatormovement:"Movement",defects:"Defects"};
+const SECURITY_FLAGS=["Encrypt128Bit","Encrypt40Bit","AllowPrinting","AllowCopy","AllowFillIn","AllowModifyAnnotation","AllowModifyContent","AllowAssembly","AllowScreenReaders","AllowDegradedPrinting"];
+const HEADER_LABELS={udc1:"Title",udc2:"Subtitle",udc3:"Row 2, box 1",udc4:"Row 2, box 2",udc5:"Row 3, box 1",udc6:"Row 3, box 2",udc7:"Footer"};
+const LAYOUTS={"1 Picture Landscape":[1,1,"L"],"2 Picture Portrait":[1,2,"P"],"4 Picture Landscape":[2,2,"L"],"4 Picture Portrait":[2,2,"P"],"6 Picture Landscape":[3,2,"L"],"6 Picture Portrait":[2,3,"P"],"9 Picture Portrait":[3,3,"P"]};
+const QUALITY_PX={Low:800,Medium:1400,High:2400,Original:0};
+const DEFAULT_COLORS={"Check":"#FF0000","Work Content":"#FFFF00","Verify":"#0000FF","Safety":"#FF6347","Quality":"#00A651","Border":"#000000"};
+const VALUE_NAMES={VA:"Value Added",NVA:"Non-Value Added",TQC:"Check & Verify"};
+const BOAT_TERMS=["PONTOON", "TOON", "TRITOON", "TUBE", "CENTER TUBE", "LOG", "NOSE CONE", "STRAKE", "LIFTING STRAKE", "KEEL", "KEEL GUARD", "SPLASH GUARD", "UNDERSKIN", "UNDER SKIN", "DECK", "DECKING", "CROSSMEMBER", "CROSS MEMBER", "BRACKET", "GUSSET", "C-CHANNEL", "CHANNEL", "EXTRUSION", "RAIL", "RAIL EXTRUSION", "FRONT RAIL", "REAR RAIL", "SIDE RAIL", "CORNER RAIL", "RAIL TRIM", "TRIM", "DECK TRIM", "RUB RAIL", "TOE RAIL", "END CAP", "CORNER CASTING", "CASTING", "FENCE", "FENCE PANEL", "PANEL", "GATE", "DOGHOUSE", "ARCH", "ARCH CASSETTE", "CASSETTE", "BIMINI", "BIMINI TOP", "POWERSHADE", "POWER SHADE", "POWER SHADE SPORT", "DAY SHADE", "SHADE", "TOWER", "SKI TOW", "SKI TOW BAR", "SKI PYLON", "BOW", "STERN", "TRANSOM", "STBD", "STARBOARD", "PORT", "HELM", "CONSOLE", "HELM CONSOLE", "DASH", "CAPTAIN'S CHAIR", "CAPTAINS CHAIR", "LOUNGE", "CHAISE", "BENCH SEAT", "FURNITURE", "UPHOLSTERY", "VINYL", "WOVEN VINYL", "CARPET", "FLOORING", "SWIM PLATFORM", "BOARDING LADDER", "LADDER", "ESP", "MOTOR POD", "POD", "ENGINE BRACKET", "MOTOR BRACKET", "OUTBOARD", "ENGINE", "MOTOR", "LIVEWELL", "CLEAT", "POP-UP CLEAT", "FUEL FILL", "DIRECT FILL", "FUEL TANK", "GAS TANK", "FUEL LINE", "BILGE", "BATTERY SWITCH", "WIRING HARNESS", "HARNESS", "NAV LIGHTS", "NAVIGATION LIGHTS", "DOCKING LIGHTS", "COURTESY LIGHTS", "LED", "STEREO", "SPEAKER", "SUBWOOFER", "STEERING", "STEERING CABLE", "THROTTLE", "ROD HOLDER", "CUP HOLDER", "MOORING COVER", "COVER", "TRAILER", "JIG", "DRILL JIG", "RAIL TRIM DRILL JIG", "GATE SPACING JIG", "TEMPLATE"];
+const TYPE_ES={"Work Content":"Trabajo","Check":"Revisar","Verify":"Verificar","Safety":"Seguridad","Quality":"Calidad"};
+const WIDTHS={"Helvetica":[278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584,761,556,761,222,556,333,1000,556,556,333,1000,667,333,1000,761,611,761,761,222,222,333,333,350,556,1000,333,1000,500,333,944,761,500,667,278,333,556,556,556,556,260,556,333,737,370,556,584,333,737,333,400,584,333,333,333,556,537,278,333,333,365,556,834,834,834,611,667,667,667,667,667,667,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,500,556,556,556,556,278,278,278,278,556,556,556,556,556,556,556,584,611,556,556,556,556,500,556,500],"Helvetica-Bold":[278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584,761,556,761,278,556,500,1000,556,556,333,1000,667,333,1000,761,611,761,761,278,278,500,500,350,556,1000,333,1000,556,333,944,761,500,667,278,333,556,556,556,556,280,556,333,737,370,556,584,333,737,333,400,584,333,333,333,611,556,278,333,333,365,556,834,834,834,611,722,722,722,722,722,722,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,556,556,556,556,556,278,278,278,278,611,611,611,611,611,611,611,584,611,611,611,611,611,556,611,556]};
+
+/* ===================================================================== settings */
+const SETTINGS_KEY="vi-settings-v1";
+let ST={es_keep:null,colors:{...DEFAULT_COLORS},image_quality:"Medium",add_date:true,remember_header:false,saved_header:{}};
+try{ const s=JSON.parse(localStorage.getItem(SETTINGS_KEY)||"null"); if(s){ ST={...ST,...s}; ST.colors={...DEFAULT_COLORS,...(s.colors||{})}; } }catch(e){}
+function saveSettings(){ try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(ST)); }catch(e){} }
+
+/* ===================================================================== helpers */
+const $=(q,el=document)=>el.querySelector(q);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num=v=>{const x=parseFloat(String(v??"").trim());return isFinite(x)?x:0;};
+function toast(msg,ms=2400){const t=$("#toast");t.textContent=msg;t.classList.add("on");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("on"),ms);}
+function tidy(s){ // Word/Copilot punctuation -> plain characters the .soe format (ISO-8859-1) can hold
+  return String(s??"").replace(/[\u2018\u2019\u201B\u2032]/g,"'").replace(/[\u201C\u201D\u2033]/g,'"').replace(/[\u2013\u2014\u2212]/g,"-").replace(/\u2026/g,"...").replace(/\u2022/g,"-").replace(/\u00A0/g," ");
+}
+function newId(){ const h=[...crypto.getRandomValues(new Uint8Array(16))].map(b=>b.toString(16).padStart(2,"0")).join("").toUpperCase();
+  const s="ABCDEF"[crypto.getRandomValues(new Uint8Array(1))[0]%6]+h.slice(1);
+  return `${s.slice(0,8)}-${s.slice(8,12)}-${s.slice(12,16)}-${s.slice(16,20)}-${s.slice(20)}`; }
+function b64ToBytes(b64){ const bin=atob(b64); const a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return a; }
+function bytesToB64(bytes){ let s=""; const CH=0x8000; for(let i=0;i<bytes.length;i+=CH) s+=String.fromCharCode.apply(null,bytes.subarray(i,i+CH)); return btoa(s); }
+function latin1(str){ const a=new Uint8Array(str.length); for(let i=0;i<str.length;i++){ const c=str.charCodeAt(i); a[i]=c<256?c:63; } return a; }
+
+/* ===================================================================== document model */
+function blankTask(ppp){ return {caption:"",caption_es:"",caption_es_src:"",tasktype:"Work Content",pics_per_page:ppp||"4 Picture Landscape",cycletime:"",image_id:"",image_title:"",image_path:"",font_size:"12",
+  wastes:Object.fromEntries(WASTES.map(w=>[w,false])),setup:{selected:false,machine:false,labor:false},work:{selected:true,machine:false,labor:false},value_added:false,non_value_added:true,tqc:false}; }
+function blankDoc(){ const d={name:"untitled.soe",url:"",version:"4.0",header:Object.fromEntries(Object.keys(HEADER_LABELS).map(k=>[k,""])),advanced:true,borders:true,shapes:true,template:"Standard",soe_title:true,
+  encrypt:false,password:"",security:Object.fromEntries(SECURITY_FLAGS.map(k=>[k,""])),header_es:Object.fromEntries(Object.keys(HEADER_LABELS).map(k=>[k,""])),font:"helvetica",default_ppp:"4 Picture Landscape",logo_path:"",logo_id:"",tasks:[],images:{}};
+  if(ST.remember_header && ST.saved_header) Object.assign(d.header, ST.saved_header);
+  d.tasks.push(blankTask(d.default_ppp)); return d; }
+const isT=v=>String(v).trim().toLowerCase()==="true";
+
+function parseSoe(text){
+  const x=new DOMParser().parseFromString(text,"application/xml");
+  if(x.getElementsByTagName("parsererror").length) throw new Error("This doesn't look like a .soe work instruction file.");
+  const kid=(el,name)=>el?[...el.children].find(c=>c.tagName===name):null;
+  const g=(el,path,def="")=>{ let e=el; for(const p of path.split("/")){ e=kid(e,p); if(!e) return def; } return e.textContent; };
+  const root=x.documentElement, m=kid(root,"mainroot");
+  if(!m) throw new Error("This file has no work instruction data in it.");
+  const d=blankDoc(); d.tasks=[];
+  d.version=g(m,"version","4.0"); d.name=g(m,"FileInfo/name","untitled.soe"); d.url=g(m,"FileInfo/url","");
+  const p=kid(m,"FileProperties");
+  if(p){ for(const k in HEADER_LABELS){ d.header[k]=g(p,k,""); d.header_es[k]=g(p,k+"_es",""); }
+    d.advanced=isT(g(p,"Advanced","true")); d.borders=isT(g(p,"Borders","true")); d.shapes=isT(g(p,"Shapes","true"));
+    d.template=g(p,"Template","Standard"); d.soe_title=isT(g(p,"SOETitle","true")); d.encrypt=isT(g(p,"Encrypt","false"));
+    d.password=g(p,"password",""); for(const k of SECURITY_FLAGS) d.security[k]=g(p,k,"");
+    d.font=g(p,"Font","helvetica"); d.default_ppp=g(p,"DefaultPPP","4 Picture Landscape");
+    d.logo_path=g(p,"logo/imagepath",""); d.logo_id=g(p,"logo/imageid",""); }
+  const fd=kid(m,"FileData");
+  for(const t of (fd?[...fd.children].filter(c=>c.tagName==="Task"):[])){
+    const a=kid(t,"Analysis"); const task=blankTask(d.default_ppp);
+    Object.assign(task,{caption:g(t,"caption"),tasktype:g(t,"tasktype","Work Content"),pics_per_page:g(t,"PicsPerPage",d.default_ppp),cycletime:g(t,"cycletime"),
+      image_id:g(t,"VmsInfo/imageid"),image_title:g(t,"VmsInfo/imagetitle"),image_path:g(t,"VmsInfo/imagepath"),font_size:g(t,"VmsInfo/FontSize","12")});
+    const ct=g(t,"customtype").trim(); if(CUSTOM_TYPES[ct]) task.tasktype=ct;
+    task.caption_es=g(t,"caption_es"); task.caption_es_src=g(t,"caption_es_src");
+    if(a){ task.wastes=Object.fromEntries(WASTES.map(w=>[w,isT(g(a,"Muda/"+w,"false"))]));
+      for(const grp of ["Setup","Work"]) task[grp.toLowerCase()]=Object.fromEntries(["selected","machine","labor"].map(k=>[k,isT(g(a,grp+"/"+k,"false"))]));
+      task.value_added=isT(g(a,"ValueAdded","false")); task.non_value_added=isT(g(a,"NonValueAdded","false")); task.tqc=isT(g(a,"TQC","false")); }
+    d.tasks.push(task); }
+  const imgs=kid(kid(root,"imageroot"),"images");
+  if(imgs) for(const e of imgs.children){ const b=e.textContent.replace(/\s+/g,""); if(b) d.images[e.tagName]=b; }
+  return d;
+}
+function serializeSoe(d){
+  const cdv=v=>String(v??"").replace(/]]>/g,"]]]]><![CDATA[>");
+  const cd=(t,v)=>{ v=String(v??""); return v===""?`<${t}/>`:`<${t}><![CDATA[${cdv(tidy(v))}]]></${t}>`; };
+  const ck=(t,v)=>`<${t}><![CDATA[${cdv(tidy(v))}]]></${t}>`;
+  const b=v=>v?"true":"false";
+  const o=['<?xml version="1.0" encoding="ISO-8859-1"?><roots><mainroot>'];
+  o.push(ck("version",d.version||"4.0"),"<FileInfo>",ck("name",d.name),ck("url",d.url),"</FileInfo><FileProperties>");
+  for(const k in HEADER_LABELS) o.push(ck(k,d.header[k]||""));
+  o.push(ck("Advanced",b(d.advanced)),ck("Borders",b(d.borders)),ck("Shapes",b(d.shapes)),ck("Template",d.template||"Standard"),ck("SOETitle",b(d.soe_title)),ck("Encrypt",b(d.encrypt)),cd("password",d.password));
+  for(const k of SECURITY_FLAGS) o.push(cd(k,d.security[k]||""));
+  o.push(ck("Font",d.font||"helvetica"),ck("DefaultPPP",d.default_ppp),"<logo>",cd("imagepath",d.logo_path),cd("imageid",d.logo_id),"</logo>",...Object.keys(HEADER_LABELS).map(k=>(d.header_es&&d.header_es[k]||"").trim()?ck(k+"_es",d.header_es[k]):""),"</FileProperties>",ck("isDirty","false"),"<FileData>");
+  for(const t of d.tasks){
+    o.push("<Task><VmsInfo>",cd("imagetitle",t.image_title),cd("imagepath",t.image_path),cd("imageid",t.image_id),ck("FontSize",t.font_size||"12"),"</VmsInfo><Analysis><Muda>");
+    for(const w of WASTES) o.push(ck(w,b(t.wastes[w])));
+    o.push("</Muda><Setup>"); for(const k of ["selected","machine","labor"]) o.push(ck(k,b(t.setup[k])));
+    o.push("</Setup><Work>"); for(const k of ["selected","machine","labor"]) o.push(ck(k,b(t.work[k])));
+    o.push("</Work>",ck("ValueAdded",b(t.value_added)),ck("NonValueAdded",b(t.non_value_added)),ck("TQC",b(t.tqc)),"</Analysis>",
+      cd("cycletime",t.cycletime),ck("tasktype",CUSTOM_TYPES[t.tasktype]||t.tasktype),ck("PicsPerPage",t.pics_per_page),ck("caption",t.caption),
+      CUSTOM_TYPES[t.tasktype]?ck("customtype",t.tasktype):"",(t.caption_es||"").trim()?ck("caption_es",t.caption_es)+ck("caption_es_src",t.caption_es_src||""):"","</Task>");
+  }
+  o.push("</FileData></mainroot><imageroot><images>");
+  const used=new Set(d.tasks.map(t=>t.image_id).filter(Boolean)); if(d.logo_id) used.add(d.logo_id);
+  for(const [id,b64] of Object.entries(d.images)){ if(!used.has(id)) continue; o.push(`<${id}>`,b64.replace(/.{76}/g,"$&\n").replace(/\n$/,""),`\n</${id}>`); }
+  o.push("</images></imageroot></roots>");
+  return latin1(o.join(""));
+}
+
+/* ===================================================================== images */
+const urlCache=new Map();
+function imgURL(id){ if(!id||!D.images[id]) return ""; let u=urlCache.get(id); if(!u){ u=URL.createObjectURL(new Blob([b64ToBytes(D.images[id])],{type:"image/jpeg"})); urlCache.set(id,u);} return u; }
+function clearURLs(){ for(const u of urlCache.values()) URL.revokeObjectURL(u); urlCache.clear(); pdfImgCache.clear(); }
+async function toJpeg(blob, maxPx, q=0.85){ // decode any picture, shrink if needed, re-encode as JPEG
+  const bmp=await createImageBitmap(blob,{imageOrientation:"from-image"});
+  let w=bmp.width,h=bmp.height; if(maxPx && Math.max(w,h)>maxPx){ const k=maxPx/Math.max(w,h); w=Math.round(w*k); h=Math.round(h*k); }
+  const c=document.createElement("canvas"); c.width=w; c.height=h; const x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,w,h); x.drawImage(bmp,0,0,w,h); bmp.close?.();
+  const out=await new Promise(r=>c.toBlob(r,"image/jpeg",q)); return new Uint8Array(await out.arrayBuffer());
+}
+async function addImage(file){ const bytes=await toJpeg(file,(QUALITY_PX[ST.image_quality]||1400)+200); const id=newId(); D.images[id]=bytesToB64(bytes); return id; }
+function jpegInfo(b){ // width, height, components from the SOF marker
+  let i=2; while(i<b.length){ if(b[i]!==0xFF){i++;continue;} const m=b[i+1]; const len=(b[i+2]<<8)|b[i+3];
+    if(m>=0xC0&&m<=0xCF&&m!==0xC4&&m!==0xC8&&m!==0xCC) return {h:(b[i+5]<<8)|b[i+6],w:(b[i+7]<<8)|b[i+8],c:b[i+9]};
+    if(m===0xD8||m===0x01||(m>=0xD0&&m<=0xD7)){i+=2;continue;} i+=2+len; } return null; }
+const pdfImgCache=new Map();
+async function pdfImage(id){
+  if(!id||!D.images[id]) return null;
+  const key=id+"|"+ST.image_quality; if(pdfImgCache.has(key)) return pdfImgCache.get(key);
+  let bytes=b64ToBytes(D.images[id]); let info=jpegInfo(bytes); const max=QUALITY_PX[ST.image_quality];
+  try{ if(!info || (max && Math.max(info.w,info.h)>max) || info.c===4){ bytes=await toJpeg(new Blob([bytes]),max||0); info=jpegInfo(bytes); } }catch(e){ if(!info) return null; }
+  const r=info?{bytes,...info}:null; pdfImgCache.set(key,r); return r;
+}
+
+/* ===================================================================== PDF writer */
+const CP1252={8364:128,8218:130,402:131,8222:132,8230:133,8224:134,8225:135,710:136,8240:137,352:138,8249:139,338:140,381:142,8216:145,8217:146,8220:147,8221:148,8226:149,8211:150,8212:151,732:152,8482:153,353:154,8250:155,339:156,382:158,376:159};
+const code=ch=>{ const c=ch.charCodeAt(0); return c<256?c:(CP1252[c]||63); };
+const FONTS={reg:"F1",bold:"F2",zapf:"F3"};
+function tw(s,font,size){ if(font==="zapf") return s.length*size*0.79; const t=WIDTHS[font==="bold"?"Helvetica-Bold":"Helvetica"]; let w=0; for(const ch of String(s)){ const c=code(ch); w+= c>=32 ? (t[c-32]??556) : 0; } return w*size/1000; }
+function split(text,font,size,width){ const out=[]; for(const para of String(text??"").split(/\r?\n/)){ const words=para.split(/\s+/).filter(Boolean); let line="";
+  for(let w of words){ const cand=line?line+" "+w:w; if(tw(cand,font,size)<=width){ line=cand; continue; }
+    if(line) out.push(line); line="";
+    while(tw(w,font,size)>width && w.length>1){ let k=w.length; while(k>1 && tw(w.slice(0,k),font,size)>width) k--; out.push(w.slice(0,k)); w=w.slice(k); }
+    line=w; }
+  out.push(line); } while(out.length>1 && out[out.length-1]==="") out.pop(); return out; }
+const n2=v=>(Math.round(v*100)/100).toString();
+const hexRGB=h=>{ h=String(h).replace("#",""); if(h.length===3) h=h.split("").map(c=>c+c).join(""); return [0,2,4].map(i=>parseInt(h.slice(i,i+2),16)/255); };
+const mix=(rgb,a)=>rgb.map(c=>1-(1-c)*a);
+
+class PDF{
+  constructor(){ this.pages=[]; this.images=[]; this.imgIndex=new Map(); }
+  addPage(w,h){ this.p={w,h,ops:[]}; this.pages.push(this.p); }
+  o(s){ this.p.ops.push(s); }
+  fill(rgb){ this.o(`${rgb.map(n2).join(" ")} rg`); } stroke(rgb){ this.o(`${rgb.map(n2).join(" ")} RG`); } lw(w){ this.o(`${n2(w)} w`); }
+  rect(x,y,w,h,mode="S"){ this.o(`${n2(x)} ${n2(y)} ${n2(w)} ${n2(h)} re ${mode}`); }
+  line(x1,y1,x2,y2){ this.o(`${n2(x1)} ${n2(y1)} m ${n2(x2)} ${n2(y2)} l S`); }
+  poly(pts,mode="B"){ this.o(pts.map((p,i)=>`${n2(p[0])} ${n2(p[1])} ${i?"l":"m"}`).join(" ")+` h ${mode}`); }
+  circle(x,y,r,mode="B"){ const k=0.5523*r; this.o(`${n2(x+r)} ${n2(y)} m ${n2(x+r)} ${n2(y+k)} ${n2(x+k)} ${n2(y+r)} ${n2(x)} ${n2(y+r)} c ${n2(x-k)} ${n2(y+r)} ${n2(x-r)} ${n2(y+k)} ${n2(x-r)} ${n2(y)} c ${n2(x-r)} ${n2(y-k)} ${n2(x-k)} ${n2(y-r)} ${n2(x)} ${n2(y-r)} c ${n2(x+k)} ${n2(y-r)} ${n2(x+r)} ${n2(y-k)} ${n2(x+r)} ${n2(y)} c h ${mode}`); }
+  text(x,y,s,font,size,align="left"){ s=String(s??""); if(!s) return; if(align==="center") x-=tw(s,font,size)/2; else if(align==="right") x-=tw(s,font,size);
+    let lit=""; for(const ch of s){ const c=font==="zapf"?ch.charCodeAt(0):code(ch); lit+= (c===40||c===41||c===92)?"\\"+String.fromCharCode(c): c<32||c>126 ? "\\"+c.toString(8).padStart(3,"0") : String.fromCharCode(c); }
+    this.o(`BT /${FONTS[font]} ${n2(size)} Tf ${n2(x)} ${n2(y)} Td (${lit}) Tj ET`); }
+  image(img,x,y,w,h){ let n=this.imgIndex.get(img); if(n==null){ n=this.images.length; this.images.push(img); this.imgIndex.set(img,n); } this.o(`q ${n2(w)} 0 0 ${n2(h)} ${n2(x)} ${n2(y)} cm /Im${n} Do Q`); }
+  build(title){
+    const parts=[]; const offs=[]; let len=0;
+    const push=x=>{ const b=typeof x==="string"?latin1(x):x; parts.push(b); len+=b.length; };
+    const objs=[]; const obj=body=>{ objs.push(body); return objs.length; };
+    // reserve: 1 catalog, 2 pages, 3-5 fonts, 6 resources
+    obj(null); obj(null);
+    const f1=obj("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
+    const f2=obj("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+    const f3=obj("<< /Type /Font /Subtype /Type1 /BaseFont /ZapfDingbats >>");
+    const imgIds=this.images.map(im=>{ const cs=im.c===1?"/DeviceGray":im.c===4?"/DeviceCMYK /Decode [1 0 1 0 1 0 1 0]":"/DeviceRGB";
+      return obj({head:`<< /Type /XObject /Subtype /Image /Width ${im.w} /Height ${im.h} /ColorSpace ${cs} /BitsPerComponent 8 /Filter /DCTDecode /Length ${im.bytes.length} >>\nstream\n`,bytes:im.bytes,tail:"\nendstream"}); });
+    const res=obj(`<< /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R /F3 ${f3} 0 R >> /XObject << ${imgIds.map((id,i)=>`/Im${i} ${id} 0 R`).join(" ")} >> >>`);
+    const kids=this.pages.map(p=>{ const c=latin1(p.ops.join("\n")); const cid=obj({head:`<< /Length ${c.length} >>\nstream\n`,bytes:c,tail:"\nendstream"});
+      return obj(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${n2(p.w)} ${n2(p.h)}] /Resources ${res} 0 R /Contents ${cid} 0 R >>`); });
+    objs[0]="<< /Type /Catalog /Pages 2 0 R >>";
+    objs[1]=`<< /Type /Pages /Kids [${kids.map(k=>k+" 0 R").join(" ")}] /Count ${kids.length} >>`;
+    const pstr=s=>"("+[...tidy(s)].map(ch=>{ const c=ch.charCodeAt(0); return c===40||c===41||c===92?"\\"+ch:c>=32&&c<127?ch:c<256?"\\"+c.toString(8).padStart(3,"0"):"?"; }).join("")+")";
+    const info=obj(`<< /Title ${pstr(title||"")} /Producer (StepSheet) /Creator (StepSheet) >>`);
+    push("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n");
+    objs.forEach((b,i)=>{ offs[i]=len; push(`${i+1} 0 obj\n`); if(typeof b==="string") push(b); else { push(b.head); push(b.bytes); push(b.tail); } push("\nendobj\n"); });
+    const xref=len; push(`xref\n0 ${objs.length+1}\n0000000000 65535 f \n`+offs.map(o=>String(o).padStart(10,"0")+" 00000 n \n").join(""));
+    push(`trailer\n<< /Size ${objs.length+1} /Root 1 0 R /Info ${info} 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+    return new Blob(parts,{type:"application/pdf"});
+  }
+}
+
+/* ===================================================================== PDF layout (matches the original .soe program's output) */
+const BLACK=[0,0,0], WHITE=[1,1,1];
+function pal(k){ return hexRGB((ST.colors||{})[k]||DEFAULT_COLORS[k]||"#000000"); }
+function fit(s,font,size,width){ while(size>5 && tw(s,font,size)>width) size-=0.5; return size; }
+function shape(P,kind,x,y,r,color,number,fs){
+  P.o("q"); P.stroke(color); P.fill(WHITE); P.lw(Math.max(1.8,r*0.26)); let ty=y;
+  if(kind==="Check"){ P.poly([[x,y+r],[x+r*1.08,y-r*.78],[x-r*1.08,y-r*.78]]); ty=y-r*.3; }
+  else if(kind==="Verify") P.circle(x,y,r);
+  else if(kind==="Safety") P.poly([[x,y+r*1.1],[x+r*1.1,y],[x,y-r*1.1],[x-r*1.1,y]]);
+  else if(kind==="Quality"){ const R=r*1.1; const pts=[]; for(let k=0;k<8;k++){ const t=Math.PI/8+k*Math.PI/4; pts.push([x+R*Math.cos(t),y+R*Math.sin(t)]); } P.poly(pts); }
+  else P.rect(x-r*.9,y-r*.9,r*1.8,r*1.8,"B");
+  if(number!=null){ const L=String(number).length; if(kind==="Check"&&L>1) fs*= L===2?0.78:0.62; if(kind==="Quality"&&L>2) fs*=0.8; P.fill(BLACK); P.text(x,ty-fs*.35,String(number),"bold",fs,"center"); }
+  P.o("Q");
+}
+function cellText(P,txt,x,y,w,h,font,size,align="left"){
+  txt=String(txt||"").trim(); if(!txt) return; let lines;
+  while(true){ lines=split(txt,font,size,w-6); if(lines.length*size*1.1<=h-2||size<=5) break; size-=0.5; }
+  let yy=y+h/2+lines.length*size*1.1/2-size; P.fill(BLACK);
+  for(const ln of lines){ if(align==="center") P.text(x+w/2,yy,ln,font,size,"center"); else P.text(x+4,yy,ln,font,size); yy-=size*1.1; }
+}
+function pdfHeader(P,d,W,H,logo,lang){
+  const h=lang==="es"?Object.fromEntries(Object.keys(HEADER_LABELS).map(k=>[k,((d.header_es||{})[k]||"").trim()||d.header[k]])):d.header, s=W<H?W/792:1, top=H-14, x0=10, x1=W-10;
+  if(lang==="es"){ const tag="ESPAÑOL", tw_=tw(tag,"bold",10)+16; P.fill(BLACK); P.rect(x1-tw_,top-24,tw_,18,"f"); P.fill(WHITE); P.text(x1-tw_/2,top-19,tag,"bold",10,"center"); P.fill(BLACK); }
+  const lw=96*s+20, lh=30;
+  if(logo){ const k=Math.min(lw/logo.w,lh/logo.h); P.image(logo,18,top-10-lh+(lh-logo.h*k)/2,logo.w*k,logo.h*k); }
+  P.fill(BLACK); const title=h.udc1||""; const fs=fit(title,"bold",18,x1-x0-2*(lw+20)); P.text(W/2,top-18,title,"bold",fs,"center");
+  if((h.udc2||"").trim()) P.text(W/2,top-32,h.udc2.trim(),"reg",10,"center");
+  const useQ=d.tasks.some(t=>t.tasktype==="Quality"); const rh=24, ty=top-56, cw1=118*s, legendW=(W>H?272*s:250)+(useQ?(W>H?70*s:62):0);
+  P.stroke(BLACK); P.lw(1); P.rect(x0,ty-2*rh,x1-x0,2*rh); P.line(x0,ty-rh,x1,ty-rh); P.line(x0+cw1,ty,x0+cw1,ty-2*rh);
+  cellText(P,h.udc3,x0,ty-rh,cw1,rh,"bold",7.5,"center");
+  cellText(P,h.udc4,x0+cw1,ty-rh,x1-x0-cw1-legendW,rh,"bold",11);
+  cellText(P,h.udc5,x0,ty-2*rh,cw1,rh,"bold",7.5,"center");
+  cellText(P,h.udc6,x0+cw1,ty-2*rh,x1-x0-cw1,rh,"bold",11);
+  const items=["Check","Work Content","Verify","Safety",...(useQ?["Quality"]:[])], lfs=W>H?10:8.5; const ws=items.map(i=>tw(lang==="es"?TYPE_ES[i]:i,"bold",lfs)+22);
+  const pad=(legendW-ws.reduce((a,b)=>a+b,0))/(items.length+1); let xx=x1-legendW+pad;
+  items.forEach((it,i)=>{ shape(P,it,xx+8,ty-rh/2,7.5,pal(it)); P.fill(BLACK); P.text(xx+18,ty-rh/2-lfs*.35,lang==="es"?TYPE_ES[it]:it,"bold",lfs); xx+=ws[i]+pad; });
+  return ty-2*rh;
+}
+function pdfFooter(P,d,W,pno,count,pdfName,dateText,lang){
+  P.fill(BLACK); P.text(20,12,lang==="es"?`Página ${pno} de ${count}`:`Page ${pno} of ${count}`,"reg",10);
+  let c=((lang==="es"&&(d.header_es||{}).udc7)||d.header.udc7||"").trim(); if(pdfName){ const t=pdfName.length<=20?pdfName:"..."+pdfName.slice(-17); c=c?`${c}  - ${t}`:t; }
+  P.text(W/2,12,c,"reg",9,"center"); if(dateText) P.text(W-20,12,dateText,"reg",10,"right");
+}
+function groupPages(tasks){ const pages=[]; let i=0; const lt=t=>LAYOUTS[t.pics_per_page]?t.pics_per_page:"4 Picture Landscape";
+  while(i<tasks.length){ const L=lt(tasks[i]); const [c,r]=LAYOUTS[L]; const chunk=[]; while(i<tasks.length&&chunk.length<c*r&&lt(tasks[i])===L){ chunk.push(i); i++; } pages.push([L,chunk]); } return pages; }
+function today(){ const t=new Date(); return `${t.getMonth()+1}/${t.getDate()}/${t.getFullYear()}`; }
+
+async function buildInstructions(d,pdfName,progress,lang){
+  const P=new PDF(); const logo=await pdfImage(d.logo_id); const pages=groupPages(d.tasks); if(!pages.length) pages.push(["4 Picture Landscape",[]]);
+  const dateText=ST.add_date?today():""; let done=0;
+  for(let pno=1;pno<=pages.length;pno++){
+    const [layout,idxs]=pages[pno-1]; const [cols,rows,orient]=LAYOUTS[layout]; const W=orient==="L"?792:612, H=orient==="L"?612:792;
+    P.addPage(W,H); const bodyTop=pdfHeader(P,d,W,H,logo,lang)-7, bodyBot=30, gap=7, x0=10, x1=W-10;
+    const cw=(x1-x0-gap*(cols-1))/cols, ch=(bodyTop-bodyBot-gap*(rows-1))/rows, dense=cols*rows>=6;
+    for(let k=0;k<idxs.length;k++){
+      const ti=idxs[k], t=d.tasks[ti], col=k%cols, row=Math.floor(k/cols); const x=x0+col*(cw+gap), y=bodyTop-(row+1)*ch-row*gap;
+      const accent=pal(TASK_TYPES.includes(t.tasktype)?t.tasktype:"Work Content");
+      const fw=d.borders?3.2:0; if(d.borders){ P.stroke(accent); P.lw(fw); P.rect(x+fw/2,y+fw/2,cw-fw,ch-fw); }
+      const ix=x+fw+1, iy=y+fw+1, iw=cw-2*fw-2, ih=ch-2*fw-2;
+      const topH=dense?Math.min(34,ih*.28):Math.min(42,ih*.24), shapeW=topH, sideW=Math.min(52,iw*.15);
+      P.stroke(BLACK); P.lw(1); P.rect(ix,iy,iw,ih); P.line(ix,iy+ih-topH,ix+iw,iy+ih-topH); P.line(ix+shapeW,iy+ih,ix+shapeW,iy+ih-topH);
+      P.line(ix+iw-sideW,iy+ih,ix+iw-sideW,iy+ih-topH); P.line(ix+iw-sideW,iy+ih-topH/2,ix+iw,iy+ih-topH/2);
+      const r=topH*.3;
+      if(d.shapes) shape(P,t.tasktype,ix+shapeW/2,iy+ih-topH/2,r,accent,ti+1,Math.max(7,r*.95));
+      else { P.fill(BLACK); P.text(ix+shapeW/2,iy+ih-topH/2-r*.35,String(ti+1),"bold",Math.max(7,r),"center"); }
+      const capW=iw-shapeW-sideW-6; let fsz=Math.min(num(t.font_size)||12,12)*(dense?.75:1), lines;
+      const capText=(lang==="es"&&(t.caption_es||"").trim())?t.caption_es.trim():(t.caption||"").trim();
+      while(true){ lines=split(capText,"reg",fsz,capW); if(lines.length*fsz*1.02<=topH-2||fsz<=5) break; fsz-=0.5; }
+      P.fill(BLACK); let yy=iy+ih-fsz*.95; for(const ln of lines){ P.text(ix+shapeW+4,yy,ln,"reg",fsz); yy-=fsz*1.02; }
+      if((t.cycletime||"").trim()) P.text(ix+iw-sideW/2,iy+ih-topH/2+topH/4-2.5,t.cycletime.trim(),"reg",7,"center");
+      const img=await pdfImage(t.image_id);
+      if(img){ const ax=ix+2, ay=iy+2, aw=iw-4, ah=ih-topH-4, s=Math.min(aw/img.w,ah/img.h); P.image(img,ax+(aw-img.w*s)/2,ay+(ah-img.h*s)/2,img.w*s,img.h*s); }
+      progress&&progress(++done,d.tasks.length);
+    }
+    pdfFooter(P,d,W,pno,pages.length,pdfName,dateText,lang);
+  }
+  return P.build((lang==="es"&&(d.header_es||{}).udc1)||d.header.udc1||d.name);
+}
+
+async function buildSoe(d,pdfName){
+  const P=new PDF(); const logo=await pdfImage(d.logo_id); const W=792,H=612;
+  const hdr=["#","Task","Type","Cycle","VA","NVA","C&V","Setup","Work","Mach.","Labor","OvrP","OvrPr","Wait","Trans","Inv","Move","Def"];
+  let widths=[20,290,62,34,...Array(7).fill(26),...Array(7).fill(28)]; const usable=W-20; const sc=usable/widths.reduce((a,b)=>a+b,0); widths=widths.map(w=>w*sc);
+  const rows=d.tasks.map((t,i)=>{ const lines=split((t.caption||"").trim(),"reg",7.5,widths[1]-6); return {i,t,lines,h:Math.max(15,lines.length*9+6)}; });
+  const pagesRows=[]; let cur=[], used=0; const avail=H-60-56-30-40;
+  for(const r of rows){ if(used+r.h>avail && cur.length){ pagesRows.push(cur); cur=[]; used=0; } cur.push(r); used+=r.h; } pagesRows.push(cur);
+  const X=t=>t?"4":"";
+  for(let pno=1;pno<=pagesRows.length;pno++){
+    P.addPage(W,H); const top=pdfHeader(P,d,W,H,logo); let y=top-10; const x0=10;
+    const colX=[]; widths.reduce((a,w,i)=>{ colX[i]=a; return a+w; },x0);
+    const drawRow=(cells,h,isHead,fillType)=>{
+      if(isHead){ P.fill([.91,.91,.91]); P.rect(x0,y-h,usable,h,"f"); }
+      if(fillType){ P.fill(mix(pal(fillType),.35)); P.rect(colX[2],y-h,widths[2],h,"f"); }
+      P.stroke([.53,.53,.53]); P.lw(.4); P.rect(x0,y-h,usable,h); widths.forEach((w,i)=>{ if(i) P.line(colX[i],y,colX[i],y-h); });
+      cells.forEach((c,i)=>{ P.fill(BLACK);
+        if(Array.isArray(c)){ let yy=y-h/2+c.length*9/2-7; for(const ln of c){ P.text(colX[i]+3,yy,ln,"reg",7.5); yy-=9; } }
+        else if(isHead) P.text(colX[i]+(i===1?3:widths[i]/2),y-h/2-2.5,c,"bold",7,i===1?"left":"center");
+        else if(i>=4){ if(c){ const cx=colX[i]+widths[i]/2, cy=y-h/2; P.stroke(BLACK); P.lw(1.3); P.o(`${n2(cx-3.2)} ${n2(cy+0.2)} m ${n2(cx-1)} ${n2(cy-2.6)} l ${n2(cx+3.6)} ${n2(cy+3)} l S`); } }
+        else P.text(colX[i]+widths[i]/2,y-h/2-2.6,c,"reg",7.5,"center"); });
+      P.stroke([.53,.53,.53]); y-=h; };
+    drawRow(hdr,15,true);
+    for(const r of pagesRows[pno-1]){ const t=r.t;
+      drawRow([String(r.i+1),r.lines,t.tasktype,t.cycletime||"",X(t.value_added),X(!t.value_added&&!t.tqc),X(t.tqc),X(t.setup.selected),X(t.work.selected),
+        X(t.setup.machine||t.work.machine),X(t.setup.labor||t.work.labor),...WASTES.map(w=>X(t.wastes[w]))],r.h,false,t.tasktype); }
+    if(pno===pagesRows.length){
+      const total=d.tasks.reduce((a,t)=>a+num(t.cycletime),0), va=d.tasks.filter(t=>t.value_added).reduce((a,t)=>a+num(t.cycletime),0);
+      let s=`Total cycle time: ${total}    Value added: ${va}    Non-value added: ${total-va}`; if(total) s+=`    VA ratio: ${Math.round(va/total*100)}%`;
+      P.fill(BLACK); P.text(x0,y-22,s,"bold",9);
+      P.text(x0,y-35,"Wastes flagged:  "+WASTES.map(w=>`${WASTE_NAMES[w]}: ${d.tasks.filter(t=>t.wastes[w]).length}`).join("   "),"reg",8);
+    }
+    pdfFooter(P,d,W,pno,pagesRows.length,pdfName,ST.add_date?today():"");
+  }
+  return P.build((d.header.udc1||d.name)+" - SOE");
+}
+
+/* ===================================================================== zip (store) for hosts that can't save .soe directly */
+function crc32(b){ let c,crc=~0; const T=crc32.T||(crc32.T=Array.from({length:256},(_,n)=>{c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;return c>>>0;}));
+  for(let i=0;i<b.length;i++) crc=T[(crc^b[i])&255]^(crc>>>8); return (~crc)>>>0; }
+function zipOne(name,data){ const nb=latin1(name), crc=crc32(data); const le=(n,s)=>{const a=new Uint8Array(s);for(let i=0;i<s;i++)a[i]=(n>>>(8*i))&255;return a;};
+  const local=[le(0x04034b50,4),le(20,2),le(0,2),le(0,2),le(0,2),le(0,2),le(crc,4),le(data.length,4),le(data.length,4),le(nb.length,2),le(0,2),nb];
+  const lsize=30+nb.length; const central=[le(0x02014b50,4),le(20,2),le(20,2),le(0,2),le(0,2),le(0,2),le(0,2),le(crc,4),le(data.length,4),le(data.length,4),le(nb.length,2),le(0,2),le(0,2),le(0,2),le(0,2),le(0,4),le(0,4),nb];
+  const csize=46+nb.length; const end=[le(0x06054b50,4),le(0,2),le(0,2),le(1,2),le(1,2),le(csize,4),le(lsize+data.length,4),le(0,2)];
+  return new Blob([...local,data,...central,...end],{type:"application/zip"}); }
+
+/* ===================================================================== file I/O */
+let D=blankDoc(), fileHandle=null, dirty=false;
+const hasFSA=()=>typeof window.showOpenFilePicker==="function";
+let downloadsP=null; const inClaude=()=>!!(window.claude&&window.claude.use);
+async function claudeDownloads(){ if(!inClaude()) return null; if(!downloadsP) downloadsP=window.claude.use("downloads").catch(()=>null); return downloadsP; }
+function anchorSave(name,blob){ const u=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),30000); }
+async function saveBlob(name,blob,types){ // returns "saved" | "cancelled" | "failed"
+  if(typeof window.showSaveFilePicker==="function" && !inClaude()){
+    try{ const h=await window.showSaveFilePicker({suggestedName:name,types}); const w=await h.createWritable(); await w.write(blob); await w.close(); return {status:"saved",handle:h,name:h.name}; }
+    catch(e){ if(e.name==="AbortError") return {status:"cancelled"}; }
+  }
+  const dl=await claudeDownloads();
+  if(dl){ const ext=name.split(".").pop().toLowerCase(); let fname=name, data=blob;
+    if(!["pdf","csv","txt","zip"].includes(ext)){ data=zipOne(name,new Uint8Array(await blob.arrayBuffer())); fname=name+".zip"; }
+    try{ await dl.save({filename:fname,data}); return {status:"saved",zipped:fname!==name,name:fname}; }
+    catch(e){ if(e&&e.code==="declined") return {status:"cancelled"}; toast("This view can't save files: "+(e&&e.message||e),5000); return {status:"failed"}; } }
+  anchorSave(name,blob); return {status:"saved",name,download:true};
+}
+async function readSoeFile(file){ const buf=await file.arrayBuffer(); const text=new TextDecoder("iso-8859-1").decode(buf); const d=parseSoe(text); d.name=file.name||d.name; return d; }
+function loadDoc(d,handle){ clearURLs(); D=d; fileHandle=handle||null; dirty=false; sel=new Set([0]); lastClick=0; render(); scheduleDraft(true); }
+async function doOpen(){
+  if(!(await confirmDiscard())) return;
+  if(hasFSA() && !inClaude()){
+    try{ const [h]=await window.showOpenFilePicker({types:[{description:"SOE work instruction files",accept:{"application/xml":[".soe"]}}]});
+      const f=await h.getFile(); loadDoc(await readSoeFile(f),h); toast("Opened "+f.name); return; }
+    catch(e){ if(e.name==="AbortError") return; }
+  }
+  $("#soeInput").value=""; $("#soeInput").click();
+}
+async function openFromFile(f){ try{ loadDoc(await readSoeFile(f)); toast("Opened "+f.name); }catch(e){ toast("Couldn't open "+f.name+": "+e.message,5000); } }
+async function doSave(as){
+  const bytes=serializeSoe(D);
+  if(!as && fileHandle && fileHandle.createWritable){
+    try{ if(fileHandle.requestPermission && (await fileHandle.requestPermission({mode:"readwrite"}))!=="granted") throw Object.assign(new Error("denied"),{name:"NotAllowedError"});
+      const w=await fileHandle.createWritable(); await w.write(bytes); await w.close(); afterSave(fileHandle.name); toast("Saved "+fileHandle.name); return; }
+    catch(e){ if(e.name==="AbortError") return; toast("Couldn't write the file, choose where to save it.",4000); }
+  }
+  const r=await saveBlob(D.name||"untitled.soe",new Blob([bytes]),[{description:"SOE work instruction file",accept:{"application/xml":[".soe"]}}]);
+  if(r.status!=="saved") return;
+  if(r.handle) fileHandle=r.handle;
+  afterSave(r.handle?r.handle.name:D.name);
+  toast(r.zipped?`Saved ${r.name}. Unzip it to get the .soe file.`:r.download?`Saved ${r.name} to your Downloads folder`:"Saved "+r.name,5000);
+}
+function afterSave(name){ if(name && /\.soe$/i.test(name)) D.name=name; dirty=false; scheduleDraft(); if(ST.remember_header){ ST.saved_header={...D.header}; saveSettings(); } renderHeader(); }
+async function doPdf(kind){
+  const base=(D.name||"untitled").replace(/\.soe$/i,""); const name=base+(kind==="soe"?" SOE.pdf":kind==="es"?" (Español).pdf":".pdf");
+  if(kind==="es"){ const miss=D.tasks.filter(t=>!(t.caption_es||"").trim()).length; if(miss===D.tasks.length){ toast("No Spanish yet. Use the Spanish tab to translate the steps first.",5000); tab="es"; render(); return; } }
+  toast("Building PDF...",20000);
+  try{ const blob=kind==="soe"?await buildSoe(D,name):await buildInstructions(D,name,(a,b)=>toast(`Building PDF... ${a} of ${b} steps`,20000),kind==="es"?"es":"");
+    const r=await saveBlob(name,blob,[{description:"PDF",accept:{"application/pdf":[".pdf"]}}]);
+    const miss=kind==="es"?D.tasks.filter(t=>!(t.caption_es||"").trim()).length:0;
+    if(r.status==="saved") toast((r.download?`${r.name} saved to your Downloads folder`:`Saved ${r.name}`)+(miss?`. ${miss} step${miss>1?"s":""} had no Spanish and kept the English text.`:""),6000); else toast(r.status==="cancelled"?"Cancelled":"Not saved");
+  }catch(e){ console.error(e); toast("PDF failed: "+e.message,6000); }
+}
+
+/* ===================================================================== auto-recovery (IndexedDB) */
+let idbP=null, persisted=new Set(), draftTimer=null, lastDraft=0;
+function idb(){ if(!idbP) idbP=new Promise((res,rej)=>{ try{ const r=indexedDB.open("visual-instructor",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }catch(e){ rej(e); } }); return idbP; }
+async function idbDo(mode,fn){ const db=await idb(); return new Promise((res,rej)=>{ const t=db.transaction("kv",mode), st=t.objectStore("kv"); let out; const r=fn(st); if(r&&"onsuccess" in r) r.onsuccess=()=>{ out=r.result; }; t.oncomplete=()=>res(out); t.onerror=()=>rej(t.error); t.onabort=()=>rej(t.error); }); }
+const idbGet=k=>idbDo("readonly",st=>st.get(k));
+function scheduleDraft(fresh=false){ if(fresh){ persisted=new Set(); writeDraft(true); return; } clearTimeout(draftTimer); draftTimer=setTimeout(()=>writeDraft(false),700); }
+async function writeDraft(fresh){ clearTimeout(draftTimer); draftTimer=null;
+  try{ const meta={...D}; delete meta.images; const ids=Object.keys(D.images).filter(id=>!persisted.has(id));
+    let handle=fileHandle; try{ structuredClone(handle); }catch(e){ handle=null; }
+    await idbDo("readwrite",st=>{ if(fresh) st.clear(); for(const id of ids) st.put(D.images[id],"img:"+id); st.put({meta,dirty,handle,savedAt:Date.now()},"draft"); });
+    ids.forEach(id=>persisted.add(id)); lastDraft=Date.now(); renderHeader();
+  }catch(e){ console.warn("Auto-recovery unavailable",e); } }
+async function restoreDraft(){
+  try{ const dr=await idbGet("draft"); if(!dr||!dr.meta||!Array.isArray(dr.meta.tasks)) return false;
+    const d={...blankDoc(),...dr.meta,images:{}}; const ids=new Set(d.tasks.map(t=>t.image_id).filter(Boolean)); if(d.logo_id) ids.add(d.logo_id);
+    for(const id of ids){ const b=await idbGet("img:"+id); if(b){ d.images[id]=b; persisted.add(id); } }
+    clearURLs(); D=d; fileHandle=dr.handle||null; dirty=!!dr.dirty; lastDraft=dr.savedAt||0; sel=new Set([0]); render();
+    const t=new Date(dr.savedAt||Date.now()).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
+    toast(dirty?`Restored your unsaved work from ${t}. Save when you're ready.`:`Reopened ${D.name}`,5000); return true;
+  }catch(e){ console.warn("Restore failed",e); return false; } }
+const hasWork=()=>D.tasks.some(t=>(t.caption||"").trim()||t.image_id)||!!fileHandle;
+window.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden"&&draftTimer) writeDraft(false); });
+window.addEventListener("pagehide",()=>{ if(draftTimer) writeDraft(false); });
+
+/* ===================================================================== text bridge (Copilot / Excel) */
+function stepsText(){ const h=D.header; const lines=[];
+  if(h.udc1) lines.push("Title: "+h.udc1); if(h.udc4) lines.push("Document: "+h.udc4); lines.push("");
+  D.tasks.forEach((t,i)=>lines.push(`${i+1}. [${t.tasktype}] ${(t.caption||"").replace(/\s*\n\s*/g," ").trim()}`)); return lines.join("\n"); }
+function parseSteps(text){ const steps=[], loose=[]; let title="", numbered=false;
+  const typeRe=/^(work\s*content|work|check|verify|safety|quality)$/i;
+  const norm=s=>{ s=s.toLowerCase().replace(/\s+/g," "); return s.startsWith("work")?"Work Content":s[0].toUpperCase()+s.slice(1); };
+  for(let raw of tidy(text).split(/\r?\n/)){ let s=raw.trim().replace(/^#+\s*/,"").replace(/^\*\*(.*)\*\*$/,"$1"); if(!s) continue;
+    const tm=s.match(/^title\s*:\s*(.+)$/i); if(tm){ title=tm[1].trim(); continue; }
+    if(/^document\s*:/i.test(s)) continue;
+    const m=s.match(/^(?:step\s*)?(\d+)\s*[.):\-]\s*(.*)$/i) || s.match(/^[-*]\s+(.*)$/);
+    if(!m){ if(steps.length&&numbered) steps[steps.length-1].caption+=" "+s; else if(!/^```/.test(s)) loose.push(s); continue; }
+    numbered=true;
+    let body=(m.length===3?m[2]:m[1]).replace(/\*\*|__/g,"").trim(), type="Work Content";
+    let b=body.match(/^\[([^\]]+)\]\s*(.*)$/) || body.match(/^\(([^)]+)\)\s*(.*)$/) || body.match(/^([A-Za-z ]{4,12})\s*:\s*(.*)$/);
+    if(b && typeRe.test(b[1].trim())){ type=norm(b[1].trim()); body=b[2].trim(); }
+    body=body.replace(/\*\*/g,"").replace(/\s+\((?:[^()]*(?:no picture|cycle time|wastes:)[^()]*)\)\s*$/i,"").trim(); steps.push({type,caption:body}); }
+  if(!steps.length) for(const l of loose){ let body=l.replace(/^[-*\u2022]\s+/,"").replace(/\*\*/g,""), type="Work Content"; const b=body.match(/^\[([^\]]+)\]\s*(.*)$/);
+    if(b&&/^(work\s*content|work|check|verify|safety|quality)$/i.test(b[1].trim())){ const t=b[1].trim().toLowerCase(); type=t.startsWith("work")?"Work Content":t[0].toUpperCase()+t.slice(1); body=b[2]; } if(body.trim()) steps.push({type,caption:body.trim()}); }
+  return {title,steps}; }
+function csvText(){ const q=v=>{ v=String(v??""); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+  const head=["Step","Type","Task","Spanish","Cycle Time","Value",...WASTES.map(w=>WASTE_NAMES[w]),"Picture"];
+  const rows=D.tasks.map((t,i)=>[i+1,t.tasktype,t.caption,t.caption_es||"",t.cycletime,VALUE_NAMES[valueClass(t)],...WASTES.map(w=>t.wastes[w]?"Yes":""),t.image_title]);
+  return "\uFEFF"+[head,...rows].map(r=>r.map(q).join(",")).join("\r\n"); }
+function reviewText(){ const h=D.header, T=D.tasks, L=[];
+  L.push("Please review these visual work instructions. Point out missing safety, check or verify steps, unclear or ambiguous wording, steps in the wrong order, and steps that combine two actions. Keep my format when you suggest rewrites: one numbered step per line starting with [Work Content], [Check], [Verify], [Safety] or [Quality], part names and tools in CAPS.","");
+  L.push("Title: "+(h.udc1||D.name||"")); for(const k of ["udc2","udc4","udc3","udc5","udc6"]) if((h[k]||"").trim()) L.push(h[k].trim()); L.push("");
+  T.forEach((t,i)=>{ const w=WASTES.filter(x=>t.wastes[x]).map(x=>WASTE_NAMES[x]); const ex=[t.cycletime?"cycle time "+t.cycletime:"", w.length?"wastes: "+w.join(", "):"", (!t.image_id||!D.images[t.image_id])?"no picture":""].filter(Boolean);
+    L.push(`${i+1}. [${t.tasktype}] ${(t.caption||"").replace(/\s*\n\s*/g," ").trim()}${ex.length?"  ("+ex.join("; ")+")":""}`); });
+  return L.join("\n"); }
+const COPILOT_PROMPT=`Write the work instruction steps for: <describe the job>
+
+Format rules:
+- Put the whole answer inside one code block so it can be copied exactly.
+- One step per line, numbered: 1. 2. 3.
+- Start each step with its type in brackets: [Work Content], [Check], [Verify], [Safety] or [Quality]
+- Keep each step under 20 words. Put part names and tools in CAPS.
+- Start with a [Safety] step for PPE.
+- First line: Title: <document title>`;
+async function copyText(text){ try{ await navigator.clipboard.writeText(text); return true; }catch(e){ return false; } }
+
+/* ===================================================================== modal */
+function modal(html,onMount){ const m=$("#modal"), d=$("#dlg"); d.innerHTML=html; m.hidden=false; const close=()=>{ m.hidden=true; d.innerHTML=""; }; onMount&&onMount(d,close);
+  m.onclick=e=>{ if(e.target===m) close(); }; (d.querySelector("textarea,button.primary,button")||d).focus(); return close; }
+function ask(msg,ok="Discard changes"){ return new Promise(res=>{ modal(`<h2>Unsaved changes</h2><p>${esc(msg)}</p><div class="acts"><button class="lbtn" data-r="0">Cancel</button><button class="lbtn danger" data-r="1">${esc(ok)}</button></div>`,
+  (d,close)=>d.querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{ close(); res(b.dataset.r==="1"); })); }); }
+async function confirmDiscard(){ return !dirty || ask("This file has changes that aren't saved. Continue without saving?"); }
+
+function copilotMenu(btn){
+  document.querySelectorAll(".menu").forEach(m=>m.remove());
+  const r=btn.getBoundingClientRect(); const m=document.createElement("div"); m.className="menu";
+  m.style.top=(r.bottom+4)+"px"; m.style.left=Math.max(8,Math.min(r.left,innerWidth-260))+"px";
+  m.innerHTML=`<button data-m="copy">Copy steps for Copilot</button><button data-m="paste">Paste steps from Copilot…</button><button data-m="prompt">Copilot prompt for new steps…</button><button data-m="csv">Export steps to Excel (.csv)</button>`;
+  document.body.appendChild(m);
+  m.onclick=async e=>{ const k=e.target.dataset.m; if(!k) return; m.remove();
+    if(k==="copy"){ const t=stepsText(); if(await copyText(t)) toast("Steps copied. Paste them into Copilot.");
+      else modal(`<h2>Copy steps</h2><p>Select all (Ctrl+A) and copy (Ctrl+C):</p><textarea readonly>${esc(t)}</textarea><div class="acts"><button class="lbtn primary" data-x>Done</button></div>`,(d,c)=>{ d.querySelector("textarea").select(); d.querySelector("[data-x]").onclick=c; }); }
+    if(k==="prompt") modal(`<h2>Copilot prompt</h2><p>Paste this into Microsoft 365 Copilot, fill in the job, then bring its answer back with <b>Paste steps from Copilot</b>.</p><textarea id="pr">${esc(COPILOT_PROMPT)}</textarea><div class="acts"><button class="lbtn" data-x>Close</button><button class="lbtn primary" data-c>Copy prompt</button></div>`,
+      (d,c)=>{ d.querySelector("[data-x]").onclick=c; d.querySelector("[data-c]").onclick=async()=>{ const ta=d.querySelector("textarea"); if(await copyText(ta.value)) toast("Prompt copied"); else { ta.select(); toast("Press Ctrl+C to copy"); } }; });
+    if(k==="paste") pasteDialog();
+    if(k==="csv"){ const base=(D.name||"untitled").replace(/\.soe$/i,""); const r=await saveBlob(base+" steps.csv",new Blob([csvText()],{type:"text/csv"}),[{description:"CSV",accept:{"text/csv":[".csv"]}}]); if(r.status==="saved") toast("Saved "+r.name); }
+  };
+  setTimeout(()=>document.addEventListener("click",function h(ev){ if(!m.contains(ev.target)){ m.remove(); document.removeEventListener("click",h); } }),0);
+}
+function pasteDialog(){
+  modal(`<h2>Paste steps from Copilot</h2><p>Paste a numbered list. A type in brackets at the start of a step sets its quality: <code>[Work Content]</code>, <code>[Check]</code>, <code>[Verify]</code>, <code>[Safety]</code>, <code>[Quality]</code>. A <code>Title:</code> line sets the header title.</p>
+    <textarea id="pasteBox" placeholder="Title: Standard Rail Layout&#10;1. [Safety] Wear REQUIRED P.P.E&#10;2. [Work Content] Mark STBD and PORT DOGHOUSE LOCATIONS"></textarea>
+    <p class="hint" id="pastePrev">Nothing pasted yet.</p>
+    <div class="acts"><button class="lbtn" data-x>Cancel</button><button class="lbtn" data-a="replace">Replace text of existing steps</button><button class="lbtn primary" data-a="append">Add as new steps</button></div>`,
+  (d,close)=>{ const ta=d.querySelector("textarea"), pv=d.querySelector("#pastePrev");
+    ta.oninput=()=>{ const r=parseSteps(ta.value); pv.textContent=r.steps.length?`${r.steps.length} steps found`+(r.title?`, title "${r.title}"`:"")+`. First: [${r.steps[0].type}] ${r.steps[0].caption.slice(0,80)}`:"No numbered steps found yet."; };
+    d.querySelector("[data-x]").onclick=close;
+    d.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{ const r=parseSteps(ta.value); if(!r.steps.length){ toast("No numbered steps found"); return; }
+      if(r.title) D.header.udc1=r.title;
+      if(b.dataset.a==="append"){ const start=D.tasks.length===1&&!D.tasks[0].caption&&!D.tasks[0].image_id?0:D.tasks.length; if(start===0) D.tasks=[];
+        r.steps.forEach(s=>{ const t=blankTask(D.default_ppp); t.caption=s.caption; t.tasktype=s.type; D.tasks.push(t); }); toast(`Added ${r.steps.length} steps`); }
+      else { r.steps.forEach((s,i)=>{ if(!D.tasks[i]) D.tasks.push(blankTask(D.default_ppp)); D.tasks[i].caption=s.caption; D.tasks[i].tasktype=s.type; }); toast(`Updated ${r.steps.length} steps; pictures kept`); }
+      close(); changed(true); }); });
+}
+
+/* ===================================================================== UI */
+let tab="vi", sel=new Set([0]), lastClick=0, pickImageFor=-1;
+const valueClass=t=>t.value_added?"VA":(t.tqc?"TQC":"NVA");
+function color(k){ return (ST.colors||{})[k]||DEFAULT_COLORS[k]||"#000"; }
+function shapeSVG(kind,n,size=26){ const c=color(kind), m=size/2; let s;
+  if(kind==="Check") s=`<polygon points="${m},3 ${size-2},${size-4} 2,${size-4}" fill="#fff" stroke="${c}" stroke-width="3" stroke-linejoin="round"/>`;
+  else if(kind==="Verify") s=`<circle cx="${m}" cy="${m}" r="${m-2.5}" fill="#fff" stroke="${c}" stroke-width="3"/>`;
+  else if(kind==="Safety") s=`<polygon points="${m},2 ${size-2},${m} ${m},${size-2} 2,${m}" fill="#fff" stroke="${c}" stroke-width="3"/>`;
+  else if(kind==="Quality"){ const R=m-1.6; s=`<polygon points="${Array.from({length:8},(_,k)=>{ const t=Math.PI/8+k*Math.PI/4; return (m+R*Math.cos(t)).toFixed(1)+","+(m+R*Math.sin(t)).toFixed(1); }).join(" ")}" fill="#fff" stroke="${c}" stroke-width="3" stroke-linejoin="round"/>`; }
+  else s=`<rect x="3" y="3" width="${size-6}" height="${size-6}" fill="#fff" stroke="${c}" stroke-width="3"/>`;
+  const ty=kind==="Check"?size*.74:size*.66, fs=size*(String(n??"").length>1&&kind==="Check"?.3:.38);
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="flex:none">${s}${n!=null?`<text x="${m}" y="${ty}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="#000" font-family="Arial">${n}</text>`:""}</svg>`; }
+function changed(re=false){ dirty=true; if(re) render(); else renderHeader(); scheduleDraft(); }
+function renderHeader(){
+  $("#fname").innerHTML=esc(D.name||"untitled.soe")+(dirty?'<span class="dot" title="Unsaved changes"></span>':"");
+  document.title=(dirty?"* ":"")+(D.name||"untitled.soe")+" - StepSheet";
+  const t=D.tasks, counts={}; t.forEach(x=>counts[x.tasktype]=(counts[x.tasktype]||0)+1); const total=t.reduce((a,x)=>a+num(x.cycletime),0);
+  $("#status").innerHTML=`<span>${t.length} steps</span>`+Object.entries(counts).map(([k,v])=>`<span>${esc(k)}: ${v}</span>`).join("")+(total?`<span>Total cycle: ${total}</span>`:"")+
+    `<span>${sel.size>1?sel.size+" rows selected":"Row "+(([...sel][0]??0)+1)+" selected"}</span>`+
+    (lastDraft?`<span title="If this page is reloaded or closed, it reopens with this work.">Kept in this browser ${new Date(lastDraft).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}</span>`:"");
+}
+function render(){
+  document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===tab));
+  document.querySelectorAll(".rowtool").forEach(b=>b.disabled=tab==="opt"||tab==="review"||tab==="es");
+  const sc=$("#main").scrollTop; $("#main").innerHTML={vi:renderVI,cv:renderCV,act:renderAct,waste:renderWaste,opt:renderOpt,review:renderReview,es:renderEs}[tab](); $("#main").scrollTop=sc; renderHeader(); }
+const rowA=i=>`data-i="${i}" class="${sel.has(i)?"sel":""}"`;
+const numCell=i=>`<td class="num" data-sel="${i}" title="Click to select. Ctrl or Shift for several."><span class="stepno">Step </span>${i+1}</td>`;
+function renderVI(){
+  if(!D.tasks.length) return `<div class="empty"><div>No steps yet.</div><div class="row"><button class="lbtn primary" data-act="add">+ Add a step</button><button class="lbtn" data-act="open">Open a .soe file</button></div></div>`;
+  const opt=(list,v)=>list.map(x=>`<option ${x===v?"selected":""}>${x}</option>`).join("");
+  return `<table class="grid"><thead><tr><th></th><th>Image</th><th>Quality</th><th>Page Type</th><th style="width:55%">Task</th></tr></thead><tbody>${D.tasks.map((t,i)=>`
+   <tr ${rowA(i)}>${numCell(i)}
+    <td class="cimg"><div class="thumb" data-img="${i}" tabindex="0" role="button" aria-label="Picture for step ${i+1}" title="Click, drop or paste a picture">${t.image_id&&D.images[t.image_id]?`<img src="${imgURL(t.image_id)}" alt=""><button class="x" data-rmimg="${i}" aria-label="Remove picture">×</button>`:"Add picture"}</div></td>
+    <td class="half" data-label="Quality"><div class="typesel">${shapeSVG(t.tasktype,i+1)}<select class="s" id="tt${i}" data-f="tasktype" data-i="${i}" aria-label="Quality">${opt(TASK_TYPES,t.tasktype)}</select></div></td>
+    <td class="half" data-label="Page type"><select class="s" id="pp${i}" data-f="pics_per_page" data-i="${i}" aria-label="Page type">${opt(PAGE_TYPES,t.pics_per_page)}</select></td>
+    <td data-label="Task"><textarea class="cap" id="cap${i}" spellcheck="true" data-f="caption" data-i="${i}" aria-label="Task for step ${i+1}" placeholder="Task description">${esc(t.caption)}</textarea>
+      <div class="capmeta"><label for="fs${i}">Font</label><select class="s" id="fs${i}" data-f="font_size" data-i="${i}">${[8,9,10,11,12,13,14].map(x=>`<option ${String(x)===String(t.font_size)?"selected":""}>${x}</option>`).join("")}</select>${t.image_title?`<span title="${esc(t.image_path)}">${esc(t.image_title)}</span>`:""}</div></td>
+   </tr>`).join("")}</tbody></table>`; }
+function renderCV(){ let tot=0,va=0,tq=0;
+  const rows=D.tasks.map((t,i)=>{ const c=num(t.cycletime); tot+=c; if(t.value_added) va+=c; else if(t.tqc) tq+=c; const v=valueClass(t);
+    return `<tr ${rowA(i)}>${numCell(i)}<td class="ro">${esc(t.caption)}</td><td data-label="Cycle time"><input class="f small" id="ct${i}" data-f="cycletime" data-i="${i}" value="${esc(t.cycletime)}" inputmode="decimal" aria-label="Cycle time step ${i+1}"></td>
+      <td data-label="Value"><span class="seg">${["VA","NVA","TQC"].map(k=>`<label><input type="radio" name="v${i}" data-value="${i}" value="${k}" ${v===k?"checked":""}><span>${VALUE_NAMES[k]}</span></label>`).join("")}</span></td></tr>`; }).join("");
+  return `<table class="grid"><thead><tr><th></th><th>Task</th><th>Cycle Time</th><th>Value Added</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td></td><td>Totals</td><td>${tot||""}</td><td>VA ${va} · NVA ${tot-va-tq} · Check &amp; Verify ${tq}${tot?` · VA ratio ${Math.round(va/tot*100)}%`:""}</td></tr></tfoot></table>`; }
+function renderAct(){
+  const rows=D.tasks.map((t,i)=>{ const su=t.setup.selected&&!t.work.selected, g=su?t.setup:t.work;
+    return `<tr ${rowA(i)}>${numCell(i)}<td class="ro">${esc(t.caption)}</td><td class="c" data-label="Setup"><input type="radio" name="sw${i}" data-sw="${i}" value="setup" ${su?"checked":""} aria-label="Setup"></td><td class="c" data-label="Work"><input type="radio" name="sw${i}" data-sw="${i}" value="work" ${!su?"checked":""} aria-label="Work"></td>
+     <td class="c" data-label="Machine"><input type="checkbox" data-ml="${i}" value="machine" ${g.machine?"checked":""} aria-label="Machine"></td><td class="c" data-label="Labor"><input type="checkbox" data-ml="${i}" value="labor" ${g.labor?"checked":""} aria-label="Labor"></td></tr>`; }).join("");
+  return `<table class="grid"><thead><tr><th></th><th>Task</th><th class="c">Setup</th><th class="c">Work</th><th class="c">Machine</th><th class="c">Labor</th></tr></thead><tbody>${rows}</tbody></table>${chart()}`; }
+function chart(){ const t=D.tasks, v=t.map(x=>num(x.cycletime)), sum=v.reduce((a,b)=>a+b,0);
+  if(!sum) return `<div class="chart"><h3>Activity chart</h3><div class="hint">Enter cycle times on the Cycle / Value tab to see the chart.</div></div>`;
+  const bh=16,gap=5,lw=40,W=760,H=t.length*(bh+gap)+34, col={VA:"#2e8b3e",NVA:"#9aa3ae",TQC:"#1d5fae"}; let start=0;
+  const bars=t.map((x,i)=>{ const w=v[i]/sum*(W-lw-70), y=i*(bh+gap)+4; const r=`<text x="${lw-8}" y="${y+12}" text-anchor="end" font-size="11" fill="currentColor" opacity=".7">${i+1}</text><rect x="${lw+start}" y="${y}" width="${v[i]?Math.max(w,2):0}" height="${bh}" rx="2" fill="${col[valueClass(x)]}"><title>Step ${i+1}: ${v[i]}</title></rect>${v[i]?`<text x="${lw+start+w+4}" y="${y+12}" font-size="10" fill="currentColor" opacity=".7">${v[i]}</text>`:""}`; start+=w; return r; }).join("");
+  const leg=Object.entries(col).map(([k,c],j)=>`<rect x="${lw+j*150}" y="${H-16}" width="10" height="10" fill="${c}"/><text x="${lw+j*150+14}" y="${H-7}" font-size="11" fill="currentColor">${VALUE_NAMES[k]}</text>`).join("");
+  return `<div class="chart"><h3>Activity chart (running cycle time)</h3><div style="overflow-x:auto"><svg width="100%" viewBox="0 0 ${W} ${H}" style="max-width:${W}px;min-width:520px">${bars}${leg}</svg></div></div>`; }
+function renderWaste(){ const tot=Object.fromEntries(WASTES.map(w=>[w,0]));
+  const rows=D.tasks.map((t,i)=>`<tr ${rowA(i)}>${numCell(i)}<td class="ro">${esc(t.caption)}</td>${WASTES.map(w=>{ if(t.wastes[w]) tot[w]++; return `<td class="c" data-label="${WASTE_NAMES[w]}"><input type="checkbox" data-waste="${i}" value="${w}" ${t.wastes[w]?"checked":""} aria-label="${WASTE_NAMES[w]}"></td>`; }).join("")}</tr>`).join("");
+  return `<div style="overflow-x:auto"><table class="grid"><thead><tr><th></th><th>Task</th>${WASTES.map(w=>`<th class="c">${WASTE_NAMES[w]}</th>`).join("")}</tr></thead><tbody>${rows}</tbody><tfoot><tr><td></td><td>Flagged</td>${WASTES.map(w=>`<td class="c">${tot[w]||""}</td>`).join("")}</tr></tfoot></table></div>`; }
+function esState(t){ const es=(t.caption_es||"").trim(); if(!es) return "miss"; if((t.caption_es_src||"")!==(t.caption||"").trim()) return "stale"; return lostTerms(t).length?"terms":"ok"; }
+function lostTerms(t){ const es=" "+(t.caption_es||"")+" "; return termsIn(t.caption).filter(x=>!termRe(x).test(es)); }
+function renderEs(){ const T=D.tasks, st=T.map(esState), n=k=>st.filter(x=>x===k).length; const he=D.header_es||{};
+  return `<div style="padding:14px 16px;display:grid;gap:12px">
+   <div class="revbar"><button class="lbtn primary" data-act="escopy">Copy for Copilot translation</button><button class="lbtn" data-act="espaste">Paste Spanish from Copilot…</button><button class="lbtn" data-act="pdfes">Create Spanish PDF</button>
+     <span class="hint">${n("ok")+n("terms")} of ${T.length} steps translated${n("terms")?` · <b style="color:#a15c00">${n("terms")} with boat terms translated instead of kept in English</b>`:""}${n("stale")?` · <b style="color:var(--danger)">${n("stale")} changed in English since translating</b>`:""}${n("miss")?` · ${n("miss")} missing (the PDF keeps their English)`:""}</span></div>
+   <details class="card"${Object.values(he).some(v=>(v||"").trim())?"":" open"}><summary><b>Header in Spanish</b> <span class="hint">Left blank, a box keeps its English text.</span></summary>
+     <div class="esgrid">${Object.entries(HEADER_LABELS).map(([k,l])=>`<div class="fr" style="margin:0"><label for="hes_${k}">${l}</label><input class="f" id="hes_${k}" data-hes="${k}" value="${esc(he[k]||"")}" placeholder="${esc(D.header[k]||"")}" spellcheck="false" lang="es-MX"></div>`).join("")}</div></details>
+   <details class="card"><summary><b>Boat terms kept in English</b> <span class="hint">${keepTerms().length} terms. ${(()=>{ const f=new Set(), ks=new Set(); T.forEach(t=>termsIn(t.caption).forEach(x=>{ const k=x.replace(/S$/,"").replace(/E$/,""); if(!ks.has(k)){ ks.add(k); f.add(x); } })); return f.size?`This file uses: ${[...f].slice(0,14).join(", ")}${f.size>14?"…":""}`:"None in this file yet."; })()}</span></summary>
+     <p class="hint">One term per line. Copilot is told to keep these in English (plurals count), and steps where one got translated are flagged. Saved in this browser for every file.</p>
+     <textarea id="esKeep" class="cap" style="min-height:160px;font-family:var(--mono);font-size:12px" spellcheck="false">${esc(keepTerms().join("\n"))}</textarea>
+     <div class="acts" style="display:flex;gap:8px;margin-top:8px"><button class="lbtn primary" data-act="eskeepsave">Save list</button><button class="lbtn" data-act="eskeepreset">Reset to built-in list</button></div></details>
+   <table class="grid"><thead><tr><th></th><th style="width:40%">English</th><th>Español</th><th></th></tr></thead><tbody>
+   ${T.map((t,i)=>`<tr ${rowA(i)}>${numCell(i)}<td class="ro" data-label="English">${shapeSVG(t.tasktype,null,16)} ${esc(t.caption)}</td>
+     <td data-label="Español"><textarea class="cap" id="es${i}" data-es="${i}" lang="es-MX" spellcheck="true" style="min-height:54px" aria-label="Spanish for step ${i+1}">${esc(t.caption_es||"")}</textarea></td>
+     <td>${st[i]==="terms"?`<span class="chip warn" title="Should stay in English: ${esc(lostTerms(t).join(", "))}">Check: ${esc(lostTerms(t).slice(0,2).join(", "))}${lostTerms(t).length>2?"…":""}</span>`:({ok:'<span class="chip ok">Translated</span>',miss:'<span class="chip miss">Missing</span>',stale:'<span class="chip stale" title="The English was edited after this was translated">English changed</span>'})[st[i]]}</td></tr>`).join("")}
+   </tbody></table></div>`; }
+const ES_PROMPT=`Translate these work instructions into natural Mexican Spanish for production workers in a U.S. boat plant.
+Rules:
+- Put your whole answer inside one code block so it can be copied exactly.
+- One line per item. Start each line with its tag in square brackets exactly as given, like [H1] or [12].
+- Write it the way a Mexican supervisor would explain it on the floor: natural and clear, not word-for-word.
+- Use Mexican shop-floor vocabulary for everyday words and tools (for example broca, rondana, tuerca, rebaba, viruta, cinta métrica) and avoid Spain-only words.
+- Use short "usted" commands (Marque, Mida, Taladre, Coloque, Apriete).
+- Keep measurements, sizes and document numbers exactly as written (3/8", 32", OPS-SOP-00367).
+- Pontoon and boat part names stay in English, in CAPS, the way workers say them on the floor. Use normal Spanish grammar around them, for example "Coloque el CROSSMEMBER" or "los RAILS de STBD".@@TERMS@@
+- Do the same for any other pontoon or boat part, option package or brand name that has no common Spanish word.
+- Other words written in CAPS (like MARK, LOCATIONS, DRAWING, DRILL BIT): translate them and keep them in CAPS.
+- Do not add a numbered or bulleted list, headings or notes. Reply with only the code block.`;
+let esSent=[];  // order of items in the last text copied for translation, used when Copilot's answer loses its tags
+function keepTerms(){ const k=Array.isArray(ST.es_keep)?ST.es_keep:BOAT_TERMS; return k.map(x=>String(x).trim()).filter(Boolean); }
+const termRe=t=>new RegExp("(^|[^A-Za-z])"+t.replace(/[.*+?^${}()|[\]\\]/g,"\\$&").replace(/[\s-]+/g,"[\\s-]*")+"(?:E?S)?(?=$|[^A-Za-z])","i");
+function termsIn(text){ // longest first, so FRONT RAIL wins over RAIL
+  const out=[]; let rest=" "+String(text||"")+" ";
+  for(const t of keepTerms().slice().sort((a,b)=>b.length-a.length)){ const re=new RegExp(termRe(t).source,"gi"); let m;
+    while((m=re.exec(rest))){ const w=m[0].slice(m[1].length).replace(/\s+/g," ").trim().toUpperCase(); const key=w.replace(/S$/,"").replace(/E$/,""); if(w&&!out.some(o=>o.replace(/S$/,"").replace(/E$/,"")===key)) out.push(w); }
+    rest=rest.replace(re,"$1 "); }
+  return out; }
+function esPrompt(items){ const found=new Set(), keys=new Set(); items.forEach(x=>termsIn(x).forEach(t=>{ const k=t.replace(/S$/,"").replace(/E$/,""); if(!keys.has(k)){ keys.add(k); found.add(t); } }));
+  return ES_PROMPT.replace("@@TERMS@@", found.size?`\n  Keep these in English: ${[...found].join(", ")}.`:""); }
+function esSourceText(onlyNeeded){ const L=["",""]; const he=D.header_es||{}; esSent=[];
+  for(const k of Object.keys(HEADER_LABELS)){ const v=(D.header[k]||"").trim(); if(v&&(!onlyNeeded||!(he[k]||"").trim())){ L.push(`[H${k.slice(3)}] ${v}`); esSent.push(k); } }
+  L.push(""); D.tasks.forEach((t,i)=>{ if(!onlyNeeded||esState(t)!=="ok"){ L.push(`[${i+1}] ${(t.caption||"").replace(/\s*\n\s*/g," ").trim()}`); esSent.push(i+1); } });
+  L[0]=esPrompt(L.slice(2)); return L.join("\n"); }
+function esCopyDialog(){ const need=D.tasks.some(t=>esState(t)!=="ok")&&D.tasks.some(t=>esState(t)==="ok");
+  modal(`<h2>Copy for Copilot translation</h2><p>Copy this, paste it into Copilot, then bring the answer back with <b>Paste Spanish from Copilot</b>. You can edit the instructions at the top first, for example to keep part names in English.</p>
+    ${need?`<label class="chk"><input type="checkbox" id="esOnly" checked> Only steps that are missing or changed</label>`:""}
+    <textarea id="esText">${esc(esSourceText(need))}</textarea><div class="acts"><button class="lbtn" data-x>Close</button><button class="lbtn primary" data-c>Copy</button></div>`,
+  (d,close)=>{ const ta=d.querySelector("textarea"); d.querySelector("#esOnly")?.addEventListener("change",e=>{ ta.value=esSourceText(e.target.checked); });
+    d.querySelector("[data-x]").onclick=close; d.querySelector("[data-c]").onclick=async()=>{ if(await copyText(ta.value)){ toast("Copied. Paste it into Copilot (Ctrl+V)."); close(); } else { ta.select(); toast("Press Ctrl+C to copy"); } }; }); }
+function parseEs(text){ const steps={}, head={}, loose=[]; let last=null, tagged=0;
+  for(let raw of String(text).split(/\r?\n/)){ let s=raw.trim(); if(!s||/^```/.test(s)) continue; s=s.replace(/^#+\s*/,"").replace(/\*\*|__/g,"").replace(/^[-*\u2022]\s+/,"");
+    let m=s.match(/^\[\s*H\s*([1-7])\s*\]\s*(.*)$/i)||s.match(/^H\s*([1-7])\s*[:.)\-]\s*(.*)$/i); if(m){ head["udc"+m[1]]=m[2].trim(); last={h:"udc"+m[1]}; tagged++; continue; }
+    m=s.match(/^\[\s*(\d+)\s*\]\s*(.*)$/)||s.match(/^(?:paso\s*)?(\d+)\s*[.):\-]\s*(.*)$/i); if(m){ steps[+m[1]]=m[2].trim().replace(/^\[[^\]\d]{2,20}\]\s*/,""); last={n:+m[1]}; tagged++; continue; }
+    if(tagged){ if(last.h) head[last.h]+=" "+s; else steps[last.n]+=" "+s; } else loose.push(s); }
+  let seq="";
+  if(!tagged && loose.length){ // tags were lost when copying: pair the lines with what was sent, in order
+    const order = esSent.length===loose.length ? esSent : loose.length===D.tasks.length ? D.tasks.map((_,i)=>i+1) : null;
+    if(order){ order.forEach((k,i)=>{ if(typeof k==="number") steps[k]=loose[i]; else head[k]=loose[i]; }); seq="matched in order"; }
+    else seq=`${loose.length} lines without numbers, but ${esSent.length||D.tasks.length} items were sent, so they can't be matched`; }
+  return {steps,head,seq}; }
+function esPasteDialog(){
+  modal(`<h2>Paste Spanish from Copilot</h2><p>Use the <b>Copy</b> button on Copilot's code block, then paste here. Lines tagged [12] go to step 12 and [H1] lines go to the header. Lines without tags are matched in order with what you last copied.</p>
+    <textarea id="esPaste" lang="es-MX" placeholder="[H1] Distribución, marcado e instalación de rieles estándar&#10;[1] Use el EPP REQUERIDO&#10;[2] Marque las UBICACIONES de la CASETA..."></textarea>
+    <p class="hint" id="esPrev">Nothing pasted yet.</p><div class="acts"><button class="lbtn" data-x>Cancel</button><button class="lbtn primary" data-a>Use this Spanish</button></div>`,
+  (d,close)=>{ const ta=d.querySelector("textarea"), pv=d.querySelector("#esPrev");
+    ta.oninput=()=>{ const r=parseEs(ta.value), nums=Object.keys(r.steps).map(Number), bad=nums.filter(n=>n<1||n>D.tasks.length), h=Object.keys(r.head).length;
+      pv.textContent=(nums.length||h?`${nums.length-bad.length} steps${h?` and ${h} header line${h>1?"s":""}`:""} found${r.seq==="matched in order"?" (no numbers, matched in order)":""}.`+(bad.length?` Numbers ${bad.join(", ")} don't match a step and will be skipped.`:""):(r.seq?r.seq+".":"Nothing pasted yet.")); };
+    d.querySelector("[data-x]").onclick=close;
+    d.querySelector("[data-a]").onclick=()=>{ const r=parseEs(ta.value); let n=0;
+      for(const [k,v] of Object.entries(r.steps)){ const t=D.tasks[+k-1]; if(t&&v.trim()){ t.caption_es=tidy(v).trim(); t.caption_es_src=(t.caption||"").trim(); n++; } }
+      D.header_es=D.header_es||{}; for(const [k,v] of Object.entries(r.head)) if(v.trim()) D.header_es[k]=tidy(v).trim();
+      if(!n&&!Object.keys(r.head).length){ toast("No numbered lines found"); return; }
+      close(); tab="es"; changed(true); toast(`Added Spanish for ${n} step${n===1?"":"s"}`); }; }); }
+function renderReview(){ const h=D.header, T=D.tasks;
+  const counts=TASK_TYPES.map(k=>[k,T.filter(t=>t.tasktype===k).length]).filter(x=>x[1]);
+  const total=T.reduce((a,t)=>a+num(t.cycletime),0), noPic=T.map((t,i)=>(!t.image_id||!D.images[t.image_id])?i+1:0).filter(Boolean);
+  const meta=[h.udc4,h.udc3,h.udc5,h.udc6].filter(x=>(x||"").trim());
+  return `<article class="review">
+    <div class="revbar"><button class="lbtn primary" data-act="revcopy">Copy for Copilot review</button><button class="lbtn" data-act="revsave">Save as text file</button>
+      <span class="hint">Copilot can't read this page when it's opened from your own drive. Copy it and paste into Copilot, or attach the text file.</span></div>
+    <h2>${esc(h.udc1||D.name||"Untitled procedure")}</h2>
+    ${h.udc2?`<p>${esc(h.udc2)}</p>`:""}${meta.length?`<p>${meta.map(esc).join(" | ")}</p>`:""}
+    <p>Steps: ${T.length}. ${counts.map(([k,n])=>`${esc(k)}: ${n}`).join(", ")}.${total?` Total cycle time: ${total}.`:""}${noPic.length?` Steps without a picture: ${noPic.join(", ")}.`:" Every step has a picture."}</p>
+    <ol>${T.map(t=>{ const w=WASTES.filter(x=>t.wastes[x]).map(x=>WASTE_NAMES[x]);
+      const extra=[t.cycletime?`cycle time ${esc(t.cycletime)}`:"", t.value_added?"value added":t.tqc?"check and verify":"", w.length?`wastes: ${w.join(", ")}`:""].filter(Boolean);
+      return `<li><strong>[${esc(t.tasktype)}]</strong> ${esc((t.caption||"").trim())||"<em>(no task text)</em>"}${extra.length?` <span class="hint">(${extra.join("; ")})</span>`:""}</li>`; }).join("")}</ol>
+    ${h.udc7?`<p class="hint">Footer: ${esc(h.udc7)}</p>`:""}
+  </article>`; }
+function renderOpt(){ const d=D;
+  const flags={AllowPrinting:"Printing",AllowModifyContent:"Modify Contents",AllowCopy:"Copy",AllowModifyAnnotation:"Modify Annotations",AllowFillIn:"Fill In",AllowScreenReaders:"Screen Readers",AllowAssembly:"Assembly",AllowDegradedPrinting:"Degraded Printing"};
+  return `<div class="opts">
+  <div class="card"><h3>Header</h3>${Object.entries(HEADER_LABELS).map(([k,l])=>`<div class="fr"><label for="h_${k}">${l}</label><input class="f" id="h_${k}" data-h="${k}" value="${esc(d.header[k])}" spellcheck="true"></div>`).join("")}
+    <div class="fr"><label>Logo</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${d.logo_id&&d.images[d.logo_id]?`<img class="logoprev" src="${imgURL(d.logo_id)}" alt="Logo">`:'<span class="hint">None</span>'}<button class="lbtn" data-act="logo">Choose…</button>${d.logo_id?'<button class="lbtn danger" data-act="nologo">Remove</button>':""}</div></div>
+    <label class="chk"><input type="checkbox" id="o_rem" data-st="remember_header" ${ST.remember_header?"checked":""}> Remember header for new files</label></div>
+  <div class="card"><h3>System</h3>
+    <div class="fr"><label for="o_ppp">Pictures per page</label><div style="display:flex;gap:6px;flex-wrap:wrap"><select class="s" id="o_ppp" data-o="default_ppp">${PAGE_TYPES.map(x=>`<option ${x===d.default_ppp?"selected":""}>${x}</option>`).join("")}</select><button class="lbtn" data-act="pppall">Apply to all rows</button></div></div>
+    <div class="fr"><label for="o_q">Image resize quality</label><select class="s" id="o_q" data-st="image_quality">${Object.keys(QUALITY_PX).map(x=>`<option ${x===ST.image_quality?"selected":""}>${x}</option>`).join("")}</select></div>
+    <label class="chk"><input type="checkbox" id="o_b" data-o="borders" ${d.borders?"checked":""}> Color borders</label>
+    <label class="chk"><input type="checkbox" id="o_s" data-o="shapes" ${d.shapes?"checked":""}> Shapes around step numbers</label>
+    <label class="chk"><input type="checkbox" id="o_a" data-o="advanced" ${d.advanced?"checked":""}> Advanced analyzer</label>
+    <label class="chk"><input type="checkbox" id="o_t" data-o="soe_title" ${d.soe_title?"checked":""}> Title in SOE</label>
+    <label class="chk"><input type="checkbox" id="o_d" data-st="add_date" ${ST.add_date?"checked":""}> Add current date to PDF footer</label>
+    <p class="hint">PDFs use Helvetica, like the original's default.</p></div>
+  <div class="card"><h3>Security</h3>
+    <p class="hint">These settings are kept in the .soe file so the old program still applies them. This web version does not password-protect its PDFs.</p>
+    <label class="chk"><input type="checkbox" id="o_e" data-o="encrypt" ${d.encrypt?"checked":""}> Encrypt PDF (old program)</label>
+    <div class="fr"><label for="o_pw">Password</label><input class="f" id="o_pw" type="password" data-o="password" value="${esc(d.password)}" autocomplete="new-password"></div>
+    ${Object.entries(flags).map(([k,l])=>`<label class="chk"><input type="checkbox" id="sec_${k}" data-sec="${k}" ${isT(d.security[k])?"checked":""}> Allow ${l}</label>`).join("")}</div>
+  <div class="card"><h3>Colors</h3>${["Check","Work Content","Verify","Safety","Quality","Border"].map(k=>`<div class="fr"><label for="c_${k.replace(/ /g,"")}">${k}</label><div style="display:flex;gap:8px;align-items:center">${k!=="Border"?shapeSVG(k,null,22):""}<input type="color" id="c_${k.replace(/ /g,"")}" data-color="${k}" value="${color(k).toLowerCase()}"></div></div>`).join("")}
+    <button class="lbtn" data-act="resetcolors">Reset colors</button></div></div>`; }
+
+/* ===================================================================== events */
+document.addEventListener("click",e=>{
+  const n=e.target.closest("[data-sel]");
+  if(n){ const i=+n.dataset.sel; if(e.shiftKey){ sel=new Set(); for(let k=Math.min(lastClick,i);k<=Math.max(lastClick,i);k++) sel.add(k); } else if(e.ctrlKey||e.metaKey){ sel.has(i)?sel.delete(i):sel.add(i); if(!sel.size) sel.add(i); } else sel=new Set([i]); lastClick=i; render(); return; }
+  const rm=e.target.closest("[data-rmimg]"); if(rm){ e.stopPropagation(); const t=D.tasks[+rm.dataset.rmimg]; t.image_id=t.image_title=t.image_path=""; changed(true); return; }
+  const im=e.target.closest("[data-img]"); if(im){ pickImageFor=+im.dataset.img; $("#imgInput").value=""; $("#imgInput").click(); return; }
+  const a=e.target.closest("[data-act]"); if(a){ act(a.dataset.act,a); return; }
+  const tb=e.target.closest("[data-tab]"); if(tb){ tab=tb.dataset.tab; render(); }
+});
+document.addEventListener("keydown",e=>{
+  const th=e.target.closest&&e.target.closest(".thumb"); if(th&&(e.key==="Enter"||e.key===" ")&&e.target===th){ e.preventDefault(); th.click(); }
+  if((e.key==="F5"||((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="r")) && hasWork()){ e.preventDefault(); toast("Reload is turned off while a file is open. Your work is also kept in this browser if the page closes.",4500); return; }
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){ e.preventDefault(); doSave(e.shiftKey); }
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="o"){ e.preventDefault(); doOpen(); }
+  if(e.key==="Escape"&&!$("#modal").hidden){ $("#modal").hidden=true; }
+});
+document.addEventListener("focusin",e=>{ const tr=e.target.closest&&e.target.closest("tr[data-i]"); if(!tr) return; const i=+tr.dataset.i; if(sel.size===1&&sel.has(i)) return; sel=new Set([i]); lastClick=i; document.querySelectorAll("tr[data-i]").forEach(r=>r.classList.toggle("sel",+r.dataset.i===i)); renderHeader(); });
+document.addEventListener("input",e=>{ const el=e.target;
+  if(el.dataset.f!=null){ const t=D.tasks[+el.dataset.i]; t[el.dataset.f]=el.value; changed(el.dataset.f==="tasktype"); }
+  else if(el.dataset.h!=null){ D.header[el.dataset.h]=el.value; changed(); }
+  else if(el.dataset.hes!=null){ (D.header_es||(D.header_es={}))[el.dataset.hes]=el.value; changed(); }
+  else if(el.dataset.es!=null){ const t=D.tasks[+el.dataset.es]; t.caption_es=el.value; t.caption_es_src=(t.caption||"").trim(); changed(); const chip=el.closest("tr")?.querySelector(".chip"); if(chip){ chip.className="chip "+(el.value.trim()?"ok":"miss"); chip.textContent=el.value.trim()?"Translated":"Missing"; } }
+  else if(el.dataset.o!=null){ D[el.dataset.o]=el.type==="checkbox"?el.checked:el.value; changed(); }
+});
+document.addEventListener("change",e=>{ const el=e.target;
+  if(el.dataset.value!=null){ const t=D.tasks[+el.dataset.value]; t.value_added=el.value==="VA"; t.tqc=el.value==="TQC"; t.non_value_added=el.value==="NVA"; changed(true); }
+  else if(el.dataset.sw!=null){ const t=D.tasks[+el.dataset.sw], toS=el.value==="setup", from=toS?t.work:t.setup, to=toS?t.setup:t.work; to.selected=true; from.selected=false; to.machine=from.machine||to.machine; to.labor=from.labor||to.labor; from.machine=from.labor=false; changed(true); }
+  else if(el.dataset.ml!=null){ const t=D.tasks[+el.dataset.ml]; const g=(t.setup.selected&&!t.work.selected)?t.setup:t.work; g[el.value]=el.checked; changed(); }
+  else if(el.dataset.waste!=null){ D.tasks[+el.dataset.waste].wastes[el.value]=el.checked; changed(true); }
+  else if(el.dataset.sec!=null){ D.security[el.dataset.sec]=el.checked?"true":"false"; changed(); }
+  else if(el.dataset.st!=null){ ST[el.dataset.st]=el.type==="checkbox"?el.checked:el.value; saveSettings(); }
+  else if(el.dataset.color!=null){ ST.colors[el.dataset.color]=el.value.toUpperCase(); saveSettings(); render(); }
+});
+async function setImages(i,files){ files=[...files].filter(f=>f&&f.type&&f.type.startsWith("image/")); if(!files.length){ toast("That isn't a picture."); return; }
+  for(let k=0;k<files.length;k++){ const idx=i+k; if(k>0) D.tasks.splice(idx,0,blankTask(D.default_ppp));
+    try{ const id=await addImage(files[k]); const t=D.tasks[idx]; t.image_id=id; t.image_title=files[k].name||"pasted.jpg"; t.image_path=files[k].name||""; }catch(err){ toast("Couldn't read "+(files[k].name||"the picture")+": "+err.message,5000); } }
+  changed(true); toast(files.length>1?`Added ${files.length} pictures as steps ${i+1}-${i+files.length}`:`Picture added to step ${i+1}`); }
+$("#imgInput").addEventListener("change",e=>{ if(pickImageFor>=0) setImages(pickImageFor,e.target.files); });
+$("#logoInput").addEventListener("change",async e=>{ const f=e.target.files[0]; if(!f) return; D.logo_id=await addImage(f); D.logo_path=f.name; changed(true); });
+$("#soeInput").addEventListener("change",e=>{ const f=e.target.files[0]; if(f) openFromFile(f); });
+document.addEventListener("dragover",e=>{ if(e.dataTransfer&&[...e.dataTransfer.types].includes("Files")){ e.preventDefault(); const t=e.target.closest&&e.target.closest(".thumb"); document.querySelectorAll(".thumb.drop").forEach(x=>x!==t&&x.classList.remove("drop")); t&&t.classList.add("drop"); } });
+document.addEventListener("drop",async e=>{ if(!e.dataTransfer||!e.dataTransfer.files.length) return; e.preventDefault(); const files=[...e.dataTransfer.files]; document.querySelectorAll(".thumb.drop").forEach(x=>x.classList.remove("drop"));
+  const soe=files.find(f=>/\.soe$/i.test(f.name)); if(soe){ if(await confirmDiscard()) openFromFile(soe); return; }
+  const th=e.target.closest&&e.target.closest(".thumb"); if(th) setImages(+th.dataset.img,files); else if(tab==="vi"){ D.tasks.push(blankTask(D.default_ppp)); setImages(D.tasks.length-1,files); } });
+document.addEventListener("paste",e=>{ const item=[...(e.clipboardData?.items||[])].find(x=>x.type.startsWith("image/")); if(item&&tab==="vi"&&$("#modal").hidden){ e.preventDefault(); setImages([...sel][0]??0,[item.getAsFile()]); } });
+window.addEventListener("beforeunload",e=>{ if(dirty){ e.preventDefault(); e.returnValue=""; } });
+
+const sorted=()=>[...sel].sort((a,b)=>a-b);
+async function act(a,btn){ const T=D.tasks;
+  switch(a){
+    case "new": if(await confirmDiscard()) loadDoc(blankDoc()); break;
+    case "open": doOpen(); break;
+    case "save": doSave(false); break;
+    case "saveas": doSave(true); break;
+    case "pdf": doPdf("instructions"); break;
+    case "pdfes": doPdf("es"); break;
+    case "escopy": esCopyDialog(); break;
+    case "eskeepsave": { const v=$("#esKeep").value.split(/[\n,]+/).map(x=>x.trim().toUpperCase()).filter(Boolean); ST.es_keep=[...new Set(v)]; saveSettings(); render(); toast(`Saved ${ST.es_keep.length} terms`); break; }
+    case "eskeepreset": ST.es_keep=null; saveSettings(); render(); toast("Built-in list restored"); break;
+    case "espaste": esPasteDialog(); break;
+    case "soe": doPdf("soe"); break;
+    case "copilot": copilotMenu(btn); break;
+    case "add": T.push(blankTask(D.default_ppp)); sel=new Set([T.length-1]); if(tab==="opt") tab="vi"; changed(true); setTimeout(()=>{$("#main").scrollTop=1e9; const c=$("#cap"+(T.length-1)); c&&c.focus();},0); break;
+    case "insert": { const i=sorted()[0]??0; T.splice(i,0,blankTask(D.default_ppp)); sel=new Set([i]); changed(true); break; }
+    case "dup": { const ix=sorted(); const cp=ix.map(i=>JSON.parse(JSON.stringify(T[i]))); const at=ix[ix.length-1]+1; T.splice(at,0,...cp); sel=new Set(cp.map((_,k)=>at+k)); changed(true); break; }
+    case "del": { const ix=sorted(); if(!ix.length) return; const removed=ix.map(i=>[i,T[i]]); ix.slice().reverse().forEach(i=>T.splice(i,1)); sel=new Set([Math.max(0,Math.min(ix[0],T.length-1))]); changed(true);
+      undoDel=removed; toastUndo(`Deleted ${removed.length} row${removed.length>1?"s":""}`); break; }
+    case "undo": if(undoDel){ undoDel.forEach(([i,t])=>D.tasks.splice(i,0,t)); sel=new Set(undoDel.map(x=>x[0])); undoDel=null; changed(true); toast("Restored"); } break;
+    case "up": { const ix=sorted(); if(ix[0]<=0) return; ix.forEach(i=>[T[i-1],T[i]]=[T[i],T[i-1]]); sel=new Set(ix.map(i=>i-1)); changed(true); break; }
+    case "down": { const ix=sorted().reverse(); if(ix[0]>=T.length-1) return; ix.forEach(i=>[T[i+1],T[i]]=[T[i],T[i+1]]); sel=new Set(ix.map(i=>i+1)); changed(true); break; }
+    case "logo": $("#logoInput").value=""; $("#logoInput").click(); break;
+    case "nologo": D.logo_id=""; D.logo_path=""; changed(true); break;
+    case "pppall": T.forEach(t=>t.pics_per_page=D.default_ppp); changed(true); toast("Applied to all rows"); break;
+    case "revcopy": { const t=reviewText(); if(await copyText(t)) toast("Copied. Paste it into Copilot (Ctrl+V).",4000);
+      else modal(`<h2>Copy for Copilot</h2><p>Select all (Ctrl+A) and copy (Ctrl+C):</p><textarea readonly>${esc(t)}</textarea><div class="acts"><button class="lbtn primary" data-x>Done</button></div>`,(d,c)=>{ d.querySelector("textarea").select(); d.querySelector("[data-x]").onclick=c; }); break; }
+    case "revsave": { const base=(D.name||"untitled").replace(/\.soe$/i,""); const r=await saveBlob(base+" for Copilot.txt",new Blob(["\uFEFF"+reviewText().replace(/\n/g,"\r\n")],{type:"text/plain"}),[{description:"Text",accept:{"text/plain":[".txt"]}}]); if(r.status==="saved") toast("Saved "+r.name+". Attach it in Copilot.",4000); break; }
+    case "resetcolors": ST.colors={...DEFAULT_COLORS}; saveSettings(); render(); break;
+  } }
+let undoDel=null;
+function toastUndo(msg){ modalLess(msg); }
+function modalLess(msg){ const t=$("#toast"); t.innerHTML=`${esc(msg)} <button class="lbtn" data-act="undo" style="margin-left:8px;pointer-events:auto">Undo</button>`; t.style.pointerEvents="auto"; t.classList.add("on"); clearTimeout(t._h); t._h=setTimeout(()=>{t.classList.remove("on"); t.style.pointerEvents="none";},6000); }
+
+if(window.matchMedia&&matchMedia("(pointer:coarse)").matches){ $("#soeInput").removeAttribute("accept"); }
+render();
+restoreDraft();
+</script>
+</body></html>
