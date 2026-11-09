@@ -267,7 +267,7 @@ def _apply_security(c, doc):
 
 def build_instructions_pdf(doc: Document, out, palette=None, quality="Medium",
                            pdf_name: str = "", add_date: bool = True, lang: str = "en") -> None:
-    """Visual work instructions, laid out like Visual Instructor's own PDF."""
+    """Visual work instructions, laid out to match the original .soe PDF output."""
     import datetime, os
     palette = {**DEFAULT_COLORS, **(palette or {})}
     fonts = _fonts(doc)

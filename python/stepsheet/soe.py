@@ -1,4 +1,4 @@
-"""Read and write Visual Instructor .soe files.
+"""Read and write .soe work-instruction files.
 
 A .soe file is ISO-8859-1 XML:
 
