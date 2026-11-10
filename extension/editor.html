@@ -203,6 +203,14 @@ h3{margin:2px 0 10px;font-size:14px}
 }
 /* Desktop-only on touch (phones + tablets): analysis/Spanish tabs and their toolbar actions. */
 @media (pointer:coarse){ .tabs .tab-adv,.tb .adv{display:none} .tb .sep{display:none} }
+.ppegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;max-height:56vh;overflow:auto;padding:2px;margin-top:4px}
+.ppetile{border:2px solid var(--line);border-radius:9px;padding:9px 6px;cursor:pointer;background:var(--panel);color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;font:inherit}
+.ppetile svg{width:54px;height:54px;flex:none}
+.ppetile .pl{font-size:11px;font-weight:600;line-height:1.2}
+.ppetile:hover{border-color:var(--focus)}
+.ppetile.on{border-color:var(--accent);background:var(--sel)}
+.ppetile.on .pl{color:var(--accent)}
+@media (pointer:coarse){ .ppetile{padding:11px 6px} .ppetile svg{width:60px;height:60px} }
 @media (prefers-reduced-motion:reduce){ .toast{transition:none} }
 </style></head><body>
 
@@ -221,6 +229,7 @@ h3{margin:2px 0 10px;font-size:14px}
     <button class="btn adv" data-act="soe">Create SOE PDF</button>
     <button class="btn adv" data-act="pdfes" title="Instructions PDF with the Spanish text">Spanish PDF</button>
     <button class="btn" data-act="backupimg" title="Save every photo as a .zip you can keep in OneDrive / Files"><span class="lbl-full">⤓ Back up photos</span><span class="lbl-short">⤓ Backup</span></button>
+    <button class="btn" data-act="ppe" title="Build a Required PPE image from tiles"><span class="lbl-full">🦺 Build PPE</span><span class="lbl-short">🦺 PPE</span></button>
     <span class="sep"></span>
     <button class="btn adv" data-act="copilot" title="Copy, paste or export steps as text">Copilot / Excel ▾</button>
     <button class="btn adv" data-act="install" id="installBtn" title="Install StepSheet as an app" hidden>⤓ Install app</button>

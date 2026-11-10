@@ -192,6 +192,14 @@ h3{margin:2px 0 10px;font-size:14px}
 }
 /* Desktop-only on touch (phones + tablets): analysis/Spanish tabs and their toolbar actions. */
 @media (pointer:coarse){ .tabs .tab-adv,.tb .adv{display:none} .tb .sep{display:none} }
+.ppegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;max-height:56vh;overflow:auto;padding:2px;margin-top:4px}
+.ppetile{border:2px solid var(--line);border-radius:9px;padding:9px 6px;cursor:pointer;background:var(--panel);color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;font:inherit}
+.ppetile svg{width:54px;height:54px;flex:none}
+.ppetile .pl{font-size:11px;font-weight:600;line-height:1.2}
+.ppetile:hover{border-color:var(--focus)}
+.ppetile.on{border-color:var(--accent);background:var(--sel)}
+.ppetile.on .pl{color:var(--accent)}
+@media (pointer:coarse){ .ppetile{padding:11px 6px} .ppetile svg{width:60px;height:60px} }
 @media (prefers-reduced-motion:reduce){ .toast{transition:none} }
 </style>
 
@@ -210,6 +218,7 @@ h3{margin:2px 0 10px;font-size:14px}
     <button class="btn adv" data-act="soe">Create SOE PDF</button>
     <button class="btn adv" data-act="pdfes" title="Instructions PDF with the Spanish text">Spanish PDF</button>
     <button class="btn" data-act="backupimg" title="Save every photo as a .zip you can keep in OneDrive / Files"><span class="lbl-full">⤓ Back up photos</span><span class="lbl-short">⤓ Backup</span></button>
+    <button class="btn" data-act="ppe" title="Build a Required PPE image from tiles"><span class="lbl-full">🦺 Build PPE</span><span class="lbl-short">🦺 PPE</span></button>
     <span class="sep"></span>
     <button class="btn adv" data-act="copilot" title="Copy, paste or export steps as text">Copilot / Excel ▾</button>
     <button class="btn adv" data-act="install" id="installBtn" title="Install StepSheet as an app" hidden>⤓ Install app</button>
@@ -270,7 +279,7 @@ const WIDTHS=__WIDTHS__;
 
 /* ===================================================================== settings */
 const SETTINGS_KEY="vi-settings-v1";
-let ST={es_keep:null,colors:{...DEFAULT_COLORS},image_quality:"Medium",add_date:true,remember_header:false,saved_header:{}};
+let ST={es_keep:null,colors:{...DEFAULT_COLORS},image_quality:"Medium",add_date:true,remember_header:false,saved_header:{},ppe_first_step:true};
 try{ const s=JSON.parse(localStorage.getItem(SETTINGS_KEY)||"null"); if(s){ ST={...ST,...s}; ST.colors={...DEFAULT_COLORS,...(s.colors||{})}; } }catch(e){}
 function saveSettings(){ try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(ST)); }catch(e){} }
 
@@ -295,7 +304,7 @@ function blankTask(ppp){ return {caption:"",caption_es:"",caption_es_src:"",task
 function blankDoc(){ const d={name:"untitled.soe",url:"",version:"4.0",header:Object.fromEntries(Object.keys(HEADER_LABELS).map(k=>[k,""])),advanced:true,borders:true,shapes:true,template:"Standard",soe_title:true,
   encrypt:false,password:"",security:Object.fromEntries(SECURITY_FLAGS.map(k=>[k,""])),header_es:Object.fromEntries(Object.keys(HEADER_LABELS).map(k=>[k,""])),font:"helvetica",default_ppp:"4 Picture Landscape",logo_path:"",logo_id:"",tasks:[],images:{}};
   if(ST.remember_header && ST.saved_header) Object.assign(d.header, ST.saved_header);
-  d.tasks.push(blankTask(d.default_ppp)); return d; }
+  const first=blankTask(d.default_ppp); if(ST.ppe_first_step){ first.caption="Required PPE"; first.tasktype="Safety"; } d.tasks.push(first); return d; }
 const isT=v=>String(v).trim().toLowerCase()==="true";
 
 function parseSoe(text){
@@ -1000,6 +1009,7 @@ function renderOpt(){ const d=D;
     <label class="chk"><input type="checkbox" id="o_a" data-o="advanced" ${d.advanced?"checked":""}> Advanced analyzer</label>
     <label class="chk"><input type="checkbox" id="o_t" data-o="soe_title" ${d.soe_title?"checked":""}> Title in SOE</label>
     <label class="chk"><input type="checkbox" id="o_d" data-st="add_date" ${ST.add_date?"checked":""}> Add current date to PDF footer</label>
+    <label class="chk"><input type="checkbox" id="o_ppe" data-st="ppe_first_step" ${ST.ppe_first_step?"checked":""}> First step is Required PPE (new files)</label>
     <p class="hint">PDFs use Helvetica, like the original's default.</p></div>
   <div class="card"><h3>Security</h3>
     <p class="hint">These settings are kept in the .soe file so the old program still applies them. This web version does not password-protect its PDFs.</p>
@@ -1071,6 +1081,7 @@ async function act(a,btn){ const T=D.tasks;
     case "espaste": esPasteDialog(); break;
     case "soe": doPdf("soe"); break;
     case "backupimg": backupPhotos(); break;
+    case "ppe": ppeBuilder(); break;
     case "copilot": copilotMenu(btn); break;
     case "install": pwaInstall(); break;
     case "add": T.push(blankTask(D.default_ppp)); sel=new Set([T.length-1]); if(tab==="opt") tab="vi"; changed(true); setTimeout(()=>{$("#main").scrollTop=1e9; const c=$("#cap"+(T.length-1)); c&&c.focus();},0); break;
@@ -1094,6 +1105,75 @@ function toastUndo(msg){ modalLess(msg); }
 function modalLess(msg){ const t=$("#toast"); t.innerHTML=`${esc(msg)} <button class="lbtn" data-act="undo" style="margin-left:8px;pointer-events:auto">Undo</button>`; t.style.pointerEvents="auto"; t.classList.add("on"); clearTimeout(t._h); t._h=setTimeout(()=>{t.classList.remove("on"); t.style.pointerEvents="none";},6000); }
 
 if(window.matchMedia&&matchMedia("(pointer:coarse)").matches){ $("#soeInput").removeAttribute("accept"); }
+/* ===================================================================== Required PPE builder
+   Original, hand-drawn icons (generic safety gear, no brands) snapped into one labeled image. */
+const PPE_NAVY="#173b5e", PPE_LBL="#16314c";
+const GLOVE="M30 47 l0 -11 q0 -4 4 -4 q4 0 4 4 l0 9 l2 0 l0 -17 q0 -4 4 -4 q4 0 4 4 l0 17 l2 0 l0 -15 q0 -4 4 -4 q4 0 4 4 l0 15 l2 0 l0 -9 q0 -4 4 -4 q4 0 4 4 l0 23 q0 20 -16 24 l-12 0 q-16 -2 -18 -20 l-5 -11 q-2 -5 3 -7 q5 -2 7 3 Z";
+const PPE_ITEMS=[
+ {id:"glasses",label:"Safety Glasses",svg:`<rect x="15" y="42" width="28" height="20" rx="10" fill="#cfe0f5" stroke="${PPE_NAVY}" stroke-width="4"/><rect x="57" y="42" width="28" height="20" rx="10" fill="#cfe0f5" stroke="${PPE_NAVY}" stroke-width="4"/><path d="M43 50 q7 -5 14 0" fill="none" stroke="${PPE_NAVY}" stroke-width="4"/><path d="M15 47 L5 41 M85 47 L95 41" fill="none" stroke="${PPE_NAVY}" stroke-width="4" stroke-linecap="round"/>`},
+ {id:"goggles",label:"Chemical Goggles",svg:`<path d="M8 48 H92" stroke="${PPE_NAVY}" stroke-width="6" fill="none" opacity=".45" stroke-linecap="round"/><path d="M18 34 h64 a10 10 0 0 1 10 10 v8 a10 10 0 0 1 -10 10 h-24 l-4 -5 h-8 l-4 5 h-24 a10 10 0 0 1 -10 -10 v-8 a10 10 0 0 1 10 -10 Z" fill="#cfe0f5" stroke="${PPE_NAVY}" stroke-width="4" stroke-linejoin="round"/>`},
+ {id:"faceshield",label:"Face Shield",svg:`<path d="M28 31 a22 15 0 0 1 44 0 Z" fill="#f2c200" stroke="${PPE_NAVY}" stroke-width="3" stroke-linejoin="round"/><rect x="25" y="28" width="50" height="7" rx="3.5" fill="#f2c200" stroke="${PPE_NAVY}" stroke-width="2.5"/><path d="M30 35 q-1 42 20 48 q21 -6 20 -48 Z" fill="#cfe0f5" opacity=".5" stroke="${PPE_NAVY}" stroke-width="3" stroke-linejoin="round"/>`},
+ {id:"earplugs",label:"Ear Plugs",svg:`<path d="M24 40 h52" stroke="${PPE_NAVY}" stroke-width="3" fill="none" opacity=".6"/><path d="M36 30 q10 0 10 13 q0 10 -4 18 q-8 8 -12 0 q-2 -18 0 -24 q2 -7 6 -7Z" fill="#f2a900" stroke="${PPE_NAVY}" stroke-width="3"/><path d="M64 34 q9 0 9 12 q0 9 -3 15 q-7 7 -11 0 q-2 -15 0 -20 q2 -7 6 -7Z" fill="#f2a900" stroke="${PPE_NAVY}" stroke-width="3"/>`},
+ {id:"earmuffs",label:"Hearing Protection",svg:`<path d="M22 56 V45 a28 28 0 0 1 56 0 V56" fill="none" stroke="${PPE_NAVY}" stroke-width="6"/><rect x="13" y="50" width="20" height="28" rx="8" fill="${PPE_NAVY}"/><rect x="67" y="50" width="20" height="28" rx="8" fill="${PPE_NAVY}"/><rect x="18" y="56" width="10" height="16" rx="4" fill="#e03b2f"/><rect x="72" y="56" width="10" height="16" rx="4" fill="#e03b2f"/>`},
+ {id:"dustmask",label:"Dust Mask (N95)",svg:`<path d="M26 40 q24 -11 48 0 q3 18 -10 27 q-14 8 -28 0 q-13 -9 -10 -27 Z" fill="#fff" stroke="${PPE_NAVY}" stroke-width="4"/><path d="M26 44 H9 M74 44 H91" stroke="${PPE_NAVY}" stroke-width="4" fill="none"/><text x="50" y="62" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="${PPE_NAVY}" text-anchor="middle">N95</text>`},
+ {id:"gloves",label:"General Gloves",svg:`<path d="${GLOVE}" fill="#cfe0f5" stroke="${PPE_NAVY}" stroke-width="3" stroke-linejoin="round"/>`},
+ {id:"cutgloves",label:"Cut-Resistant Gloves",svg:`<path d="${GLOVE}" fill="#d7dbe0" stroke="${PPE_NAVY}" stroke-width="3" stroke-linejoin="round"/><path d="M52 58 l7 3 l-1 9 l-6 3 l-6 -3 l-1 -9 Z" fill="#fff" stroke="${PPE_NAVY}" stroke-width="2.5" stroke-linejoin="round"/>`},
+ {id:"chemgloves",label:"Chemical Gloves",svg:`<path d="${GLOVE}" fill="#2b2f36" stroke="${PPE_NAVY}" stroke-width="3" stroke-linejoin="round"/><rect x="24" y="72" width="44" height="12" rx="3" fill="#2b2f36" stroke="${PPE_NAVY}" stroke-width="3"/>`},
+ {id:"impactgloves",label:"Impact Gloves",svg:`<path d="${GLOVE}" fill="#f07a1a" stroke="${PPE_NAVY}" stroke-width="3" stroke-linejoin="round"/><g fill="${PPE_NAVY}"><circle cx="38" cy="40" r="2.6"/><circle cx="47" cy="37" r="2.6"/><circle cx="56" cy="38" r="2.6"/><circle cx="64" cy="43" r="2.6"/><circle cx="45" cy="58" r="3"/></g>`},
+ {id:"hardhat",label:"Hard Hat",svg:`<path d="M26 60 a24 20 0 0 1 48 0 Z" fill="#f2c200" stroke="${PPE_NAVY}" stroke-width="4" stroke-linejoin="round"/><path d="M50 41 V60 M38 45 V60 M62 45 V60" stroke="${PPE_NAVY}" stroke-width="2" opacity=".5"/><rect x="15" y="59" width="70" height="7" rx="3.5" fill="#f2c200" stroke="${PPE_NAVY}" stroke-width="3"/>`},
+ {id:"boots",label:"Steel Toe Boots",svg:`<path d="M34 22 h16 v32 l22 10 q8 4 8 12 v3 H30 q-6 0 -6 -6 V22 Z" fill="#8a5a2b" stroke="${PPE_NAVY}" stroke-width="3" stroke-linejoin="round"/><path d="M30 68 h50 v3 a4 4 0 0 1 -4 4 H30 Z" fill="${PPE_NAVY}"/><path d="M50 54 a13 13 0 0 1 13 11" fill="none" stroke="${PPE_NAVY}" stroke-width="3"/>`},
+ {id:"vest",label:"High-Visibility Vest",svg:`<path d="M28 26 h17 l5 7 l5 -7 h17 l-7 11 v39 h-15 V49 h-5 v27 h-15 V37 Z" fill="#c8f000" stroke="${PPE_NAVY}" stroke-width="3" stroke-linejoin="round"/><g stroke="#8a9095" stroke-width="4" fill="none"><path d="M38 41 V74 M62 41 V74 M33 60 H67"/></g>`},
+ {id:"kneepads",label:"Knee Pads",svg:`<path d="M30 40 q20 -9 40 0 q7 20 -4 31 q-16 8 -32 0 q-11 -11 -4 -31 Z" fill="#2b2f36" stroke="${PPE_NAVY}" stroke-width="3"/><rect x="25" y="46" width="50" height="6" rx="3" fill="${PPE_NAVY}"/><rect x="25" y="60" width="50" height="6" rx="3" fill="${PPE_NAVY}"/>`},
+ {id:"armsleeve",label:"Arm Sleeves",svg:`<path d="M37 22 h26 v11 l-4 42 q-9 6 -18 0 l-4 -42 Z" fill="#2b2f36" stroke="${PPE_NAVY}" stroke-width="3" stroke-linejoin="round"/><path d="M41 36 h18" stroke="#8a9095" stroke-width="3"/>`},
+ {id:"coveralls",label:"Disposable Coveralls",svg:`<path d="M39 22 h22 l-2 11 l8 10 v11 l-6 2 v28 h-10 V72 h-2 v12 h-10 V56 l-6 -2 V43 l8 -10 Z" fill="#eef1f4" stroke="${PPE_NAVY}" stroke-width="3" stroke-linejoin="round"/><circle cx="50" cy="40" r="3" fill="${PPE_NAVY}"/>`},
+ {id:"harness",label:"Fall Harness",svg:`<g fill="none" stroke="${PPE_NAVY}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M36 24 L50 48 L64 24"/><path d="M50 48 V58"/><path d="M38 66 q-7 10 -3 20 M62 66 q7 10 3 20"/></g><rect x="33" y="57" width="34" height="9" rx="2" fill="${PPE_NAVY}"/><circle cx="50" cy="48" r="5" fill="#f2c200" stroke="${PPE_NAVY}" stroke-width="2"/>`},
+ {id:"vestfr",label:"FR Clothing",svg:`<path d="M34 24 h10 l6 5 l6 -5 h10 l-4 9 v43 H38 V33 Z" fill="#d9802a" stroke="${PPE_NAVY}" stroke-width="3" stroke-linejoin="round"/><path d="M50 30 V76" stroke="${PPE_NAVY}" stroke-width="2" opacity=".5"/><g stroke="#cfd4d8" stroke-width="3"><path d="M38 60 H62"/></g>`},
+ {id:"knife",label:"Safety Knife",svg:`<rect x="18" y="46" width="48" height="12" rx="6" fill="#2b63b0" stroke="${PPE_NAVY}" stroke-width="3"/><path d="M66 48 l14 -6 v8 l-10 4 Z" fill="#d7dbe0" stroke="${PPE_NAVY}" stroke-width="2.5" stroke-linejoin="round"/><circle cx="34" cy="52" r="3" fill="#fff"/>`}
+];
+function ppeLabelLines(label){ const w=label.toUpperCase().split(" "); if(w.length<2||label.length<=13) return [label.toUpperCase()];
+  let a="",b=""; for(const word of w){ if((a+" "+word).trim().length<=13 && !b) a=(a+" "+word).trim(); else b=(b+" "+word).trim(); } return b?[a,b]:[a]; }
+function ppeImageSVG(ids){
+  const items=PPE_ITEMS.filter(p=>ids.includes(p.id)); const n=items.length;
+  const cols=n<=2?n:n<=3?3:n<=4?2:n<=6?3:n<=8?4:n<=9?3:n<=12?4:5, rows=Math.ceil(n/cols);
+  const TW=210, TH=200, GAP=12, PAD=16, HB=42;
+  const W=PAD*2+cols*TW+(cols-1)*GAP, H=PAD*2+rows*TH+(rows-1)*GAP;
+  let body="";
+  items.forEach((it,i)=>{ const c=i%cols, r=Math.floor(i/cols); const x=PAD+c*(TW+GAP), y=PAD+r*(TH+GAP);
+    const lines=ppeLabelLines(it.label), fs=lines.length>1?15:17;
+    const labels=lines.map((ln,li)=>`<text x="${TW/2}" y="${TH-HB+ (lines.length>1?16:24) + li*16}" fill="#fff" font-family="Arial,sans-serif" font-size="${fs}" font-weight="700" text-anchor="middle">${esc(ln)}</text>`).join("");
+    const isz=120, ix=(TW-isz)/2, iy=(TH-HB-isz)/2+4;
+    body+=`<g transform="translate(${x},${y})"><rect width="${TW}" height="${TH}" rx="10" fill="#f3f5f8" stroke="#c9d2dc" stroke-width="1.5"/><g transform="translate(${ix},${iy}) scale(${isz/100})">${it.svg}</g><rect y="${TH-HB}" width="${TW}" height="${HB}" fill="${PPE_LBL}"/>${labels}</g>`;
+  });
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="#0d2237"/>${body}</svg>`;
+}
+async function svgToJpeg(svg,scale=2){
+  const url=URL.createObjectURL(new Blob([svg],{type:"image/svg+xml"}));
+  try{ const img=new Image(); await new Promise((res,rej)=>{ img.onload=res; img.onerror=()=>rej(new Error("render failed")); img.src=url; });
+    const c=document.createElement("canvas"); c.width=(img.naturalWidth||img.width)*scale; c.height=(img.naturalHeight||img.height)*scale;
+    const x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,c.width,c.height); x.drawImage(img,0,0,c.width,c.height);
+    const out=await new Promise(r=>c.toBlob(r,"image/jpeg",0.92)); return new Uint8Array(await out.arrayBuffer());
+  } finally{ URL.revokeObjectURL(url); } }
+async function applyPPE(ids,stepIndex){ if(!ids.length) return;
+  try{ const bytes=await svgToJpeg(ppeImageSVG(ids),2); const id=newId(); D.images[id]=bytesToB64(bytes);
+    const t=D.tasks[stepIndex]||D.tasks[0]; t.image_id=id; t.image_title="Required PPE";
+    if(!(t.caption||"").trim()) t.caption="Required PPE"; t.tasktype="Safety";
+    changed(true); toast(`Added a Required PPE image with ${ids.length} item${ids.length>1?"s":""} to step ${(D.tasks.indexOf(t))+1}`,5000);
+  }catch(e){ toast("Couldn't build the PPE image: "+e.message,5000); } }
+function ppeBuilder(){
+  const stepIndex=sorted()[0]??0; let picked=new Set();
+  const tiles=PPE_ITEMS.map(p=>`<button type="button" class="ppetile" data-ppe="${p.id}"><svg viewBox="0 0 100 100" aria-hidden="true">${p.svg}</svg><span class="pl">${esc(p.label)}</span></button>`).join("");
+  modal(`<h2>Build Required PPE image</h2>
+    <p class="hint">Tap the PPE required for this job — each one snaps into a single labeled image placed on step ${stepIndex+1}.</p>
+    <div class="ppegrid">${tiles}</div>
+    <div class="acts"><button class="lbtn" data-x>Cancel</button><button class="lbtn primary" data-apply disabled>Add image</button></div>`,
+  (d,close)=>{ const ab=d.querySelector("[data-apply]");
+    const upd=()=>{ ab.disabled=!picked.size; ab.textContent=picked.size?`Add image (${picked.size})`:"Add image"; };
+    d.querySelectorAll(".ppetile").forEach(t=>t.onclick=()=>{ const id=t.dataset.ppe; if(picked.has(id)){picked.delete(id);t.classList.remove("on");}else{picked.add(id);t.classList.add("on");} upd(); });
+    d.querySelector("[data-x]").onclick=close;
+    ab.onclick=async()=>{ const ids=PPE_ITEMS.map(p=>p.id).filter(id=>picked.has(id)); close(); await applyPPE(ids,stepIndex); };
+    upd(); });
+}
+
 /* ===================================================================== PWA install prompt */
 let deferredPrompt=null;
 const isStandalone=()=>matchMedia("(display-mode: standalone)").matches || navigator.standalone===true;
