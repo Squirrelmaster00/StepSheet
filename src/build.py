@@ -21,7 +21,7 @@ ROOT = os.path.dirname(HERE)                         # repo root
 def R(*p): return os.path.join(ROOT, *p)
 def S(*p): return os.path.join(HERE, *p)
 
-CACHE = "stepsheet-v10"   # bump when the app code changes so installed PWAs refresh
+CACHE = "stepsheet-v11"   # bump when the app code changes so installed PWAs refresh
 
 widths = open(S("widths.json"), encoding="utf-8").read().strip()
 block = open(S("header-block.html"), encoding="utf-8").read().rstrip("\n")

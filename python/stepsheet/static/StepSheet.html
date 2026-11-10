@@ -32,6 +32,7 @@
   --accent:#4b8fe0; --accent-ink:#0b1320; --sel:#22344d; --danger:#ef8a80; --ok:#7cc47f; --focus:#4b8fe0; --scrim:rgba(0,0,0,.6); color-scheme:dark}
 *{box-sizing:border-box}
 html,body{height:100%}
+html{background:var(--bar)}  /* so any home-indicator strip under the body matches the bottom bar, never a black gap */
 @supports (height:100dvh){ body{height:100dvh} }
 body{margin:0;font:13px/1.4 var(--font);color:var(--ink);background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
 button,select,input,textarea{font:inherit;color:inherit}
@@ -145,8 +146,8 @@ h3{margin:2px 0 10px;font-size:14px}
   .tabs{padding-top:6px} .tabs button{padding:9px 13px}
   main{border-radius:0 7px 0 0}
   .status{display:none}
-  .mobbar{display:grid;grid-template-columns:repeat(6,1fr);background:var(--bar);border-top:1px solid var(--bar-line);padding-top:4px;padding-bottom:calc(6px + env(safe-area-inset-bottom,0px));padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);flex:none}
-  .mobbar button{background:none;border:none;color:var(--bar-ink);padding:8px 2px;font-size:20px;line-height:1.1;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer}
+  .mobbar{display:grid;grid-template-columns:repeat(6,1fr);background:var(--bar);border-top:1px solid var(--bar-line);padding-top:3px;padding-bottom:calc(3px + env(safe-area-inset-bottom,0px));padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);flex:none}
+  .mobbar button{background:none;border:none;color:var(--bar-ink);padding:6px 2px;font-size:19px;line-height:1.1;min-height:46px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer}
   .mobbar button span{font-size:11px;opacity:.85}
   .mobbar button:disabled{opacity:.35}
   input,select,textarea,.f,.s,textarea.cap{font-size:16px!important}
