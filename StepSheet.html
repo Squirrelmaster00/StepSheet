@@ -282,14 +282,14 @@ const TASK_TYPES=["Work Content","Check","Verify","Safety","Quality"];
 const CUSTOM_TYPES={Quality:"Safety"};
 const isQ=t=>!!t.quality&&t.tasktype!=="Quality";          // the combo flag only counts on non-Quality types
 const typeTag=t=>t.tasktype+(isQ(t)?" + Quality":"");
-const PAGE_TYPES=["1 Picture Landscape","2 Picture Portrait","4 Picture Landscape","4 Picture Portrait","6 Picture Landscape","6 Picture Portrait","9 Picture Portrait"];
+const PAGE_TYPES=["1 Picture Landscape","1 Picture Portrait","2 Picture Portrait","4 Picture Landscape","4 Picture Portrait","6 Picture Landscape","6 Picture Portrait","9 Picture Portrait"];
 const WASTES=["overproduction","overprocessing","waiting","transport","inventory","operatormovement","defects"];
 const WASTE_NAMES={overproduction:"Overproduction",overprocessing:"Overprocessing",waiting:"Waiting",transport:"Transport",inventory:"Inventory",operatormovement:"Movement",defects:"Defects"};
 const SECURITY_FLAGS=["Encrypt128Bit","Encrypt40Bit","AllowPrinting","AllowCopy","AllowFillIn","AllowModifyAnnotation","AllowModifyContent","AllowAssembly","AllowScreenReaders","AllowDegradedPrinting"];
 const HEADER_LABELS={udc1:"Title",udc2:"Subtitle",udc3:"Row 2, box 1",udc4:"Row 2, box 2",udc5:"Row 3, box 1",udc6:"Row 3, box 2",udc7:"Footer"};
 // Example hints shown as placeholders in the Options header rows (generic, no brand names).
 const HEADER_HINTS={udc1:"WORK INSTRUCTION TITLE",udc2:"Subtitle (optional)",udc3:"REVISION DATE: XX/XX/XX",udc4:"OPS-SOP-XXXXXX",udc5:"COMPLETION DATE: XX/XX/XX",udc6:"CREATED BY: Your Name Here",udc7:"This document is intended for internal use only."};
-const LAYOUTS={"1 Picture Landscape":[1,1,"L"],"2 Picture Portrait":[1,2,"P"],"4 Picture Landscape":[2,2,"L"],"4 Picture Portrait":[2,2,"P"],"6 Picture Landscape":[3,2,"L"],"6 Picture Portrait":[2,3,"P"],"9 Picture Portrait":[3,3,"P"]};
+const LAYOUTS={"1 Picture Landscape":[1,1,"L"],"1 Picture Portrait":[1,1,"P"],"2 Picture Portrait":[1,2,"P"],"4 Picture Landscape":[2,2,"L"],"4 Picture Portrait":[2,2,"P"],"6 Picture Landscape":[3,2,"L"],"6 Picture Portrait":[2,3,"P"],"9 Picture Portrait":[3,3,"P"]};
 const QUALITY_PX={Low:800,Medium:1400,High:2400,Original:0};
 const DEFAULT_COLORS={"Check":"#FF0000","Work Content":"#FFFF00","Verify":"#0000FF","Safety":"#FF6347","Quality":"#00A651","Border":"#000000"};
 const VALUE_NAMES={VA:"Value Added",NVA:"Non-Value Added",TQC:"Check & Verify"};

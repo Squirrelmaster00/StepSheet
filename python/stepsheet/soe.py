@@ -28,7 +28,7 @@ TASK_TYPES = ["Work Content", "Check", "Verify", "Safety", "Quality"]
 # (Check + Quality); that flag is saved in a <quality> tag the old program also ignores.
 CUSTOM_TYPES = {"Quality": "Safety"}
 PAGE_TYPES = [
-    "1 Picture Landscape", "2 Picture Portrait", "4 Picture Landscape",
+    "1 Picture Landscape", "1 Picture Portrait", "2 Picture Portrait", "4 Picture Landscape",
     "4 Picture Portrait", "6 Picture Landscape", "6 Picture Portrait",
     "9 Picture Portrait",
 ]

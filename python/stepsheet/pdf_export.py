@@ -30,6 +30,7 @@ TYPE_ES = {"Work Content": "Trabajo", "Check": "Revisar", "Verify": "Verificar",
 # layout name -> (columns, rows, orientation)
 LAYOUTS = {
     "1 Picture Landscape": (1, 1, "L"),
+    "1 Picture Portrait": (1, 1, "P"),
     "2 Picture Portrait": (1, 2, "P"),
     "4 Picture Landscape": (2, 2, "L"),
     "4 Picture Portrait": (2, 2, "P"),
