@@ -1,5 +1,5 @@
 /* StepSheet offline cache. Bump CACHE when you update the app. */
-const CACHE = "stepsheet-v19";
+const CACHE = "stepsheet-v20";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 // cache:"reload" skips the browser's HTTP cache, so a new version never stores a stale page.
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS.map(u => new Request(u, { cache: "reload" })))).then(() => self.skipWaiting())); });
