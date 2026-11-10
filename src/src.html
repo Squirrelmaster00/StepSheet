@@ -54,6 +54,7 @@ table.grid{border-collapse:collapse;width:100%}
 .thumb .x{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.65);color:#fff;border:none;border-radius:3px;width:22px;height:22px;cursor:pointer;display:none}
 .thumb:hover .x,.thumb:focus-within .x{display:block}
 .typesel{display:flex;align-items:center;gap:6px}
+.qchk{margin:6px 0 0;font-size:12px;color:var(--muted);white-space:nowrap}
 select.s,input.f,textarea.cap{border:1px solid var(--line);border-radius:5px;background:var(--panel);padding:4px 6px}
 textarea.cap{width:100%;min-height:72px;resize:vertical;padding:6px 8px;line-height:1.35}
 .capmeta{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12px;margin-top:4px;flex-wrap:wrap}
@@ -263,8 +264,12 @@ h3{margin:2px 0 10px;font-size:14px}
 "use strict";
 /* ===================================================================== constants */
 const TASK_TYPES=["Work Content","Check","Verify","Safety","Quality"];
-// Types the original .soe program doesn't know: saved as their fallback type plus a <customtype> field the old program skips.
+// "Quality" is a step type the original .soe program doesn't know: it is saved as Safety plus a <customtype> field
+// the old program skips. Separately, any other type can be flagged quality-critical (e.g. Check + Quality); that
+// flag is saved in a <quality> field the old program also skips.
 const CUSTOM_TYPES={Quality:"Safety"};
+const isQ=t=>!!t.quality&&t.tasktype!=="Quality";          // the combo flag only counts on non-Quality types
+const typeTag=t=>t.tasktype+(isQ(t)?" + Quality":"");
 const PAGE_TYPES=["1 Picture Landscape","2 Picture Portrait","4 Picture Landscape","4 Picture Portrait","6 Picture Landscape","6 Picture Portrait","9 Picture Portrait"];
 const WASTES=["overproduction","overprocessing","waiting","transport","inventory","operatormovement","defects"];
 const WASTE_NAMES={overproduction:"Overproduction",overprocessing:"Overprocessing",waiting:"Waiting",transport:"Transport",inventory:"Inventory",operatormovement:"Movement",defects:"Defects"};
@@ -302,7 +307,7 @@ function bytesToB64(bytes){ let s=""; const CH=0x8000; for(let i=0;i<bytes.lengt
 function latin1(str){ const a=new Uint8Array(str.length); for(let i=0;i<str.length;i++){ const c=str.charCodeAt(i); a[i]=c<256?c:63; } return a; }
 
 /* ===================================================================== document model */
-function blankTask(ppp){ return {caption:"",caption_es:"",caption_es_src:"",tasktype:"Work Content",pics_per_page:ppp||"4 Picture Landscape",cycletime:"",image_id:"",image_title:"",image_path:"",font_size:"12",
+function blankTask(ppp){ return {caption:"",caption_es:"",caption_es_src:"",tasktype:"Work Content",quality:false,pics_per_page:ppp||"4 Picture Landscape",cycletime:"",image_id:"",image_title:"",image_path:"",font_size:"12",
   wastes:Object.fromEntries(WASTES.map(w=>[w,false])),setup:{selected:false,machine:false,labor:false},work:{selected:true,machine:false,labor:false},value_added:false,non_value_added:true,tqc:false}; }
 function blankDoc(){ const d={name:"untitled.soe",url:"",version:"4.0",header:Object.fromEntries(Object.keys(HEADER_LABELS).map(k=>[k,""])),advanced:true,borders:true,shapes:true,template:"Standard",soe_title:true,
   encrypt:false,password:"",security:Object.fromEntries(SECURITY_FLAGS.map(k=>[k,""])),header_es:Object.fromEntries(Object.keys(HEADER_LABELS).map(k=>[k,""])),font:"helvetica",default_ppp:"4 Picture Landscape",logo_path:"",logo_id:"",tasks:[],images:{}};
@@ -338,7 +343,8 @@ function parseSoe(text){
     const a=kid(t,"Analysis"); const task=blankTask(d.default_ppp);
     Object.assign(task,{caption:g(t,"caption"),tasktype:g(t,"tasktype","Work Content"),pics_per_page:g(t,"PicsPerPage",d.default_ppp),cycletime:g(t,"cycletime"),
       image_id:g(t,"VmsInfo/imageid"),image_title:g(t,"VmsInfo/imagetitle"),image_path:g(t,"VmsInfo/imagepath"),font_size:g(t,"VmsInfo/FontSize","12")});
-    const ct=g(t,"customtype").trim(); if(CUSTOM_TYPES[ct]) task.tasktype=ct;
+    task.quality=isT(g(t,"quality","false")); const ct=g(t,"customtype").trim(); if(CUSTOM_TYPES[ct]) task.tasktype=ct;
+    if(!TASK_TYPES.includes(task.tasktype)) task.tasktype="Work Content";
     task.caption_es=g(t,"caption_es"); task.caption_es_src=g(t,"caption_es_src");
     if(a){ task.wastes=Object.fromEntries(WASTES.map(w=>[w,isT(g(a,"Muda/"+w,"false"))]));
       for(const grp of ["Setup","Work"]) task[grp.toLowerCase()]=Object.fromEntries(["selected","machine","labor"].map(k=>[k,isT(g(a,grp+"/"+k,"false"))]));
@@ -366,7 +372,7 @@ function serializeSoe(d){
     o.push("</Setup><Work>"); for(const k of ["selected","machine","labor"]) o.push(ck(k,b(t.work[k])));
     o.push("</Work>",ck("ValueAdded",b(t.value_added)),ck("NonValueAdded",b(t.non_value_added)),ck("TQC",b(t.tqc)),"</Analysis>",
       cd("cycletime",t.cycletime),ck("tasktype",CUSTOM_TYPES[t.tasktype]||t.tasktype),ck("PicsPerPage",t.pics_per_page),ck("caption",t.caption),
-      CUSTOM_TYPES[t.tasktype]?ck("customtype",t.tasktype):"",(t.caption_es||"").trim()?ck("caption_es",t.caption_es)+ck("caption_es_src",t.caption_es_src||""):"","</Task>");
+      CUSTOM_TYPES[t.tasktype]?ck("customtype",t.tasktype):"",isQ(t)?ck("quality","true"):"",(t.caption_es||"").trim()?ck("caption_es",t.caption_es)+ck("caption_es_src",t.caption_es_src||""):"","</Task>");
   }
   o.push("</FileData></mainroot><imageroot><images>");
   const used=new Set(d.tasks.map(t=>t.image_id).filter(Boolean)); if(d.logo_id) used.add(d.logo_id);
@@ -462,8 +468,12 @@ class PDF{
 const BLACK=[0,0,0], WHITE=[1,1,1];
 function pal(k){ return hexRGB((ST.colors||{})[k]||DEFAULT_COLORS[k]||"#000000"); }
 function fit(s,font,size,width){ while(size>5 && tw(s,font,size)>width) size-=0.5; return size; }
-function shape(P,kind,x,y,r,color,number,fs){
-  P.o("q"); P.stroke(color); P.fill(WHITE); P.lw(Math.max(1.8,r*0.26)); let ty=y;
+function shape(P,kind,x,y,r,color,number,fs,quality){
+  P.o("q");
+  if(quality&&kind!=="Quality"){ // quality-critical: the type shape sits inside a Quality octagon
+    const R=r*1.52, pts=[]; for(let k=0;k<8;k++){ const a=Math.PI/8+k*Math.PI/4; pts.push([x+R*Math.cos(a),y+R*Math.sin(a)]); }
+    P.stroke(pal("Quality")); P.fill(WHITE); P.lw(Math.max(1.6,r*0.2)); P.poly(pts); r*=0.8; fs*=0.8; }
+  P.stroke(color); P.fill(WHITE); P.lw(Math.max(1.8,r*0.26)); let ty=y;
   if(kind==="Check"){ P.poly([[x,y+r],[x+r*1.08,y-r*.78],[x-r*1.08,y-r*.78]]); ty=y-r*.3; }
   else if(kind==="Verify") P.circle(x,y,r);
   else if(kind==="Safety") P.poly([[x,y+r*1.1],[x+r*1.1,y],[x,y-r*1.1],[x-r*1.1,y]]);
@@ -485,7 +495,7 @@ function pdfHeader(P,d,W,H,logo,lang){
   if(logo){ const k=Math.min(lw/logo.w,lh/logo.h); P.image(logo,18,top-10-lh+(lh-logo.h*k)/2,logo.w*k,logo.h*k); }
   P.fill(BLACK); const title=h.udc1||""; const fs=fit(title,"bold",18,x1-x0-2*(lw+20)); P.text(W/2,top-18,title,"bold",fs,"center");
   if((h.udc2||"").trim()) P.text(W/2,top-32,h.udc2.trim(),"reg",10,"center");
-  const useQ=d.tasks.some(t=>t.tasktype==="Quality"); const rh=24, ty=top-56, cw1=118*s, legendW=(W>H?272*s:250)+(useQ?(W>H?70*s:62):0);
+  const useQ=d.tasks.some(t=>t.quality||t.tasktype==="Quality"); const rh=24, ty=top-56, cw1=118*s, legendW=(W>H?272*s:250)+(useQ?(W>H?70*s:62):0);
   P.stroke(BLACK); P.lw(1); P.rect(x0,ty-2*rh,x1-x0,2*rh); P.line(x0,ty-rh,x1,ty-rh); P.line(x0+cw1,ty,x0+cw1,ty-2*rh);
   cellText(P,h.udc3,x0,ty-rh,cw1,rh,"bold",7.5,"center");
   cellText(P,h.udc4,x0+cw1,ty-rh,x1-x0-cw1-legendW,rh,"bold",11);
@@ -521,7 +531,7 @@ async function buildInstructions(d,pdfName,progress,lang){
       P.stroke(BLACK); P.lw(1); P.rect(ix,iy,iw,ih); P.line(ix,iy+ih-topH,ix+iw,iy+ih-topH); P.line(ix+shapeW,iy+ih,ix+shapeW,iy+ih-topH);
       P.line(ix+iw-sideW,iy+ih,ix+iw-sideW,iy+ih-topH); P.line(ix+iw-sideW,iy+ih-topH/2,ix+iw,iy+ih-topH/2);
       const r=topH*.3;
-      if(d.shapes) shape(P,t.tasktype,ix+shapeW/2,iy+ih-topH/2,r,accent,ti+1,Math.max(7,r*.95));
+      if(d.shapes) shape(P,t.tasktype,ix+shapeW/2,iy+ih-topH/2,r,accent,ti+1,Math.max(7,r*.95),isQ(t));
       else { P.fill(BLACK); P.text(ix+shapeW/2,iy+ih-topH/2-r*.35,String(ti+1),"bold",Math.max(7,r),"center"); }
       const capW=iw-shapeW-sideW-6; let fsz=Math.min(num(t.font_size)||12,12)*(dense?.75:1), lines;
       const capText=(lang==="es"&&(t.caption_es||"").trim())?t.caption_es.trim():(t.caption||"").trim();
@@ -560,7 +570,7 @@ async function buildSoe(d,pdfName){
       P.stroke([.53,.53,.53]); y-=h; };
     drawRow(hdr,15,true);
     for(const r of pagesRows[pno-1]){ const t=r.t;
-      drawRow([String(r.i+1),r.lines,t.tasktype,t.cycletime||"",X(t.value_added),X(!t.value_added&&!t.tqc),X(t.tqc),X(t.setup.selected),X(t.work.selected),
+      drawRow([String(r.i+1),r.lines,t.tasktype+(isQ(t)?" (Q)":""),t.cycletime||"",X(t.value_added),X(!t.value_added&&!t.tqc),X(t.tqc),X(t.setup.selected),X(t.work.selected),
         X(t.setup.machine||t.work.machine),X(t.setup.labor||t.work.labor),...WASTES.map(w=>X(t.wastes[w]))],r.h,false,t.tasktype); }
     if(pno===pagesRows.length){
       const total=d.tasks.reduce((a,t)=>a+num(t.cycletime),0), va=d.tasks.filter(t=>t.value_added).reduce((a,t)=>a+num(t.cycletime),0);
@@ -699,10 +709,14 @@ window.addEventListener("pagehide",()=>{ if(draftTimer) writeDraft(false); });
 /* ===================================================================== text bridge (Copilot / Excel) */
 function stepsText(){ const h=D.header; const lines=[];
   if(h.udc1) lines.push("Title: "+h.udc1); if(h.udc4) lines.push("Document: "+h.udc4); lines.push("");
-  D.tasks.forEach((t,i)=>lines.push(`${i+1}. [${t.tasktype}] ${(t.caption||"").replace(/\s*\n\s*/g," ").trim()}`)); return lines.join("\n"); }
+  D.tasks.forEach((t,i)=>lines.push(`${i+1}. [${typeTag(t)}] ${(t.caption||"").replace(/\s*\n\s*/g," ").trim()}`)); return lines.join("\n"); }
 function parseSteps(text){ const steps=[], loose=[]; let title="", numbered=false;
-  const typeRe=/^(work\s*content|work|check|verify|safety|quality)$/i;
-  const norm=s=>{ s=s.toLowerCase().replace(/\s+/g," "); return s.startsWith("work")?"Work Content":s[0].toUpperCase()+s.slice(1); };
+  // A leading tag sets the step type: [Check], [Quality]. "+ Quality" after another type flags it quality-critical: [Check + Quality].
+  const readTag=raw=>{ const parts=raw.split(/\s*(?:\+|,|&|\/|\band\b)\s*/i).map(x=>x.trim().toLowerCase().replace(/\s+/g," ")).filter(Boolean); if(!parts.length) return null;
+    let type=null, quality=false; for(const x of parts){ if(/^quality(\s*critical)?$/.test(x)) quality=true; else if(/^(work content|work)$/.test(x)&&!type) type="Work Content"; else if(/^(check|verify|safety)$/.test(x)&&!type) type=x[0].toUpperCase()+x.slice(1); else return null; }
+    if(!type&&quality) return {type:"Quality",quality:false};   // [Quality] on its own is the Quality step type
+    return {type:type||"Work Content",quality}; };
+  const takeTag=body=>{ const b=body.match(/^\[([^\]]+)\]\s*(.*)$/) || body.match(/^\(([^)]+)\)\s*(.*)$/) || body.match(/^([A-Za-z +&,]{4,24})\s*:\s*(.*)$/); const tg=b&&readTag(b[1]); return tg?{...tg,body:b[2].trim()}:{type:"Work Content",quality:false,body}; };
   for(let raw of tidy(text).split(/\r?\n/)){
     if(numbered && (/^\s*#{2,6}\s+\S/.test(raw) || /^\s*(#{1,6}\s*)?what\s+was\s+improved/i.test(raw))) break;
     let s=raw.trim().replace(/^#+\s*/,"").replace(/^\*\*(.*)\*\*$/,"$1"); if(!s) continue;
@@ -711,30 +725,27 @@ function parseSteps(text){ const steps=[], loose=[]; let title="", numbered=fals
     const m=s.match(/^(?:step\s*)?(\d+)\s*[.):\-]\s*(.*)$/i) || s.match(/^[-*]\s+(.*)$/);
     if(!m){ if(steps.length&&numbered) steps[steps.length-1].caption+=" "+s; else if(!/^```/.test(s)) loose.push(s); continue; }
     numbered=true;
-    let body=(m.length===3?m[2]:m[1]).replace(/\*\*|__/g,"").trim(), type="Work Content";
-    let b=body.match(/^\[([^\]]+)\]\s*(.*)$/) || body.match(/^\(([^)]+)\)\s*(.*)$/) || body.match(/^([A-Za-z ]{4,12})\s*:\s*(.*)$/);
-    if(b && typeRe.test(b[1].trim())){ type=norm(b[1].trim()); body=b[2].trim(); }
+    let {type,quality,body}=takeTag((m.length===3?m[2]:m[1]).replace(/\*\*|__/g,"").trim());
     let src=null; const sm=body.match(/^\{\s*([\d,\s–\-]+)\}\s*(.*)$/); if(sm){ src=[]; for(const part of sm[1].split(",")){ const rg=part.trim().match(/^(\d+)\s*[–-]\s*(\d+)$/); if(rg){ for(let n=+rg[1];n<=+rg[2];n++) src.push(n); } else if(/^\d+$/.test(part.trim())) src.push(+part.trim()); } body=sm[2].trim(); }
-    body=body.replace(/\*\*/g,"").replace(/\s+\((?:[^()]*(?:no picture|cycle time|wastes:)[^()]*)\)\s*$/i,"").trim(); steps.push({type,caption:body,src}); }
-  if(!steps.length) for(const l of loose){ let body=l.replace(/^[-*\u2022]\s+/,"").replace(/\*\*/g,""), type="Work Content"; const b=body.match(/^\[([^\]]+)\]\s*(.*)$/);
-    if(b&&/^(work\s*content|work|check|verify|safety|quality)$/i.test(b[1].trim())){ const t=b[1].trim().toLowerCase(); type=t.startsWith("work")?"Work Content":t[0].toUpperCase()+t.slice(1); body=b[2]; } if(body.trim()) steps.push({type,caption:body.trim()}); }
+    body=body.replace(/\*\*/g,"").replace(/\s+\((?:[^()]*(?:no picture|cycle time|wastes:)[^()]*)\)\s*$/i,"").trim(); steps.push({type,quality,caption:body,src}); }
+  if(!steps.length) for(const l of loose){ const {type,quality,body}=takeTag(l.replace(/^[-*•]\s+/,"").replace(/\*\*/g,"")); if(body.trim()) steps.push({type,quality,caption:body.trim()}); }
   return {title,steps}; }
 function csvText(){ const q=v=>{ v=String(v??""); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
   const head=["Step","Type","Task","Spanish","Cycle Time","Value",...WASTES.map(w=>WASTE_NAMES[w]),"Picture"];
-  const rows=D.tasks.map((t,i)=>[i+1,t.tasktype,t.caption,t.caption_es||"",t.cycletime,VALUE_NAMES[valueClass(t)],...WASTES.map(w=>t.wastes[w]?"Yes":""),t.image_title]);
+  const rows=D.tasks.map((t,i)=>[i+1,typeTag(t),t.caption,t.caption_es||"",t.cycletime,VALUE_NAMES[valueClass(t)],...WASTES.map(w=>t.wastes[w]?"Yes":""),t.image_title]);
   return "\uFEFF"+[head,...rows].map(r=>r.map(q).join(",")).join("\r\n"); }
 function reviewText(){ const h=D.header, T=D.tasks, L=[];
   L.push("Please review these visual work instructions. Point out missing safety, check or verify steps, unclear or ambiguous wording, steps in the wrong order, and steps that combine two actions. Keep my format when you suggest rewrites: one numbered step per line starting with [Work Content], [Check], [Verify], [Safety] or [Quality], part names and tools in CAPS.","");
   L.push("Title: "+(h.udc1||D.name||"")); for(const k of ["udc2","udc4","udc3","udc5","udc6"]) if((h[k]||"").trim()) L.push(h[k].trim()); L.push("");
   T.forEach((t,i)=>{ const w=WASTES.filter(x=>t.wastes[x]).map(x=>WASTE_NAMES[x]); const ex=[t.cycletime?"cycle time "+t.cycletime:"", w.length?"wastes: "+w.join(", "):"", (!t.image_id||!D.images[t.image_id])?"no picture":""].filter(Boolean);
-    L.push(`${i+1}. [${t.tasktype}] ${(t.caption||"").replace(/\s*\n\s*/g," ").trim()}${ex.length?"  ("+ex.join("; ")+")":""}`); });
+    L.push(`${i+1}. [${typeTag(t)}] ${(t.caption||"").replace(/\s*\n\s*/g," ").trim()}${ex.length?"  ("+ex.join("; ")+")":""}`); });
   return L.join("\n"); }
 const COPILOT_PROMPT=`Write the work instruction steps for: <describe the job>
 
 Format rules:
 - Put the whole answer inside one code block so it can be copied exactly.
 - One step per line, numbered: 1. 2. 3.
-- Start each step with its type in brackets: [Work Content], [Check], [Verify], [Safety] or [Quality]
+- Start each step with its type in brackets: [Work Content], [Check], [Verify], [Safety] or [Quality]. If a step of another type is also critical to quality, add it inside the brackets: [Check + Quality]
 - Keep each step under 20 words. Put part names and tools in CAPS.
 - Start with a [Safety] step for PPE.
 - First line: Title: <document title>`;
@@ -762,7 +773,7 @@ CHECKS:
 
 OUTPUT FORMAT:
 - Put the whole answer in one code block so it copies exactly.
-- One step per line, numbered 1. 2. 3., each starting with its type in brackets: [Work Content], [Check], [Verify], [Safety] or [Quality]. Keep each original step's type; for a bundled step use [Verify] or [Safety] if any merged action is a check or safety item, otherwise [Work Content].
+- One step per line, numbered 1. 2. 3., each starting with its type in brackets: [Work Content], [Check], [Verify], [Safety] or [Quality]. Keep each original step's type, and keep any "+ Quality" inside the brackets (for example [Check + Quality]) - a bundled step keeps "+ Quality" if any merged step had it; for a bundled step use [Verify] or [Safety] if any merged action is a check or safety item, otherwise [Work Content].
 - Right after the type, put in braces the ORIGINAL step number(s) this line came from: {2} for one step, {2,3} for a bundled step. StepSheet reads this to keep each step's photo, then removes it. So a line reads: 1. [Work Content] {2,3} Position PORT RAIL on JIG and CLAMP.
 - First line: Title: <document title>
 - After the steps, add a section "## What was improved" listing only real wording and bundling changes.`;
@@ -795,7 +806,7 @@ function copilotMenu(btn){
   setTimeout(()=>document.addEventListener("click",function h(ev){ if(!m.contains(ev.target)){ m.remove(); document.removeEventListener("click",h); } }),0);
 }
 function pasteDialog(){
-  modal(`<h2>Paste steps from Copilot</h2><p>Paste a numbered list. A type in brackets at the start of a step sets its quality: <code>[Work Content]</code>, <code>[Check]</code>, <code>[Verify]</code>, <code>[Safety]</code>, <code>[Quality]</code>. A <code>Title:</code> line sets the header title.</p>
+  modal(`<h2>Paste steps from Copilot</h2><p>Paste a numbered list. A tag in brackets at the start of a step sets its type: <code>[Work Content]</code>, <code>[Check]</code>, <code>[Verify]</code>, <code>[Safety]</code>, <code>[Quality]</code>. Add <code>+ Quality</code> to another type to mark it quality-critical, e.g. <code>[Check + Quality]</code>. A <code>Title:</code> line sets the header title.</p>
     <textarea id="pasteBox" placeholder="Title: Standard Rail Layout&#10;1. [Safety] Wear REQUIRED P.P.E&#10;2. [Work Content] Mark STBD and PORT DOGHOUSE LOCATIONS"></textarea>
     <p class="hint" id="pastePrev">Nothing pasted yet.</p>
     <div class="acts"><button class="lbtn" data-x>Cancel</button><button class="lbtn" data-a="append">Add to bottom</button><button class="lbtn primary" data-a="review">Review &amp; replace…</button></div>`,
@@ -804,7 +815,7 @@ function pasteDialog(){
     d.querySelector("[data-x]").onclick=close;
     d.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{ const r=parseSteps(ta.value); if(!r.steps.length){ toast("No numbered steps found"); return; }
       if(b.dataset.a==="append"){ if(r.title) D.header.udc1=r.title; const start=D.tasks.length===1&&!D.tasks[0].caption&&!D.tasks[0].image_id?0:D.tasks.length; if(start===0) D.tasks=[];
-        r.steps.forEach(s=>{ const t=blankTask(D.default_ppp); t.caption=s.caption; t.tasktype=s.type; D.tasks.push(t); }); close(); changed(true); toast(`Added ${r.steps.length} steps`); }
+        r.steps.forEach(s=>{ const t=blankTask(D.default_ppp); t.caption=s.caption; t.tasktype=s.type; t.quality=!!s.quality; D.tasks.push(t); }); close(); changed(true); toast(`Added ${r.steps.length} steps`); }
       else { close(); reviewPaste(r); } }); });
 }
 // Review & approve each reformatted step before it replaces the current ones. Maps new->old by the
@@ -822,7 +833,7 @@ function reviewPaste(r){
   const html=rows.map(w=>`<div class="revrow">
       <label class="revck"><input type="checkbox" ${w.changed?"checked":""} data-c="${w.i}"> Apply</label>
       <div class="revbody">
-        <div class="revmeta">${shapeSVG(w.s.type,null,16)}<b>New ${w.i+1}</b><span class="hint">${esc(w.label)}${w.typeChg}</span></div>
+        <div class="revmeta">${shapeSVG(w.s.type,null,16,w.s.quality||w.si.some(j=>isQ(old[j])))}<b>New ${w.i+1}</b><span class="hint">${esc(w.label)}${w.typeChg}</span></div>
         ${w.now.length?`<div class="revnow"><span class="rl">Now</span>${esc(w.now.join("   /   "))}</div>`:`<div class="revnow"><span class="rl">Now</span><i class="hint">no original — brand-new step</i></div>`}
         <div class="revnew"><span class="rl">VWI</span>${esc(w.s.caption)}</div>
       </div>
@@ -842,7 +853,7 @@ function reviewPaste(r){
       if(r.title) D.header.udc1=r.title;
       const on=new Set([...d.querySelectorAll("[data-c]:checked")].map(c=>+c.dataset.c)), seen=new Set(), next=[];
       rows.forEach(w=>{ w.si.forEach(j=>seen.add(j));
-        if(on.has(w.i)){ const t=blankTask(D.default_ppp); t.caption=w.s.caption; t.tasktype=w.s.type; const o=w.si.length?old[w.si[0]]:null;
+        if(on.has(w.i)){ const t=blankTask(D.default_ppp); t.caption=w.s.caption; t.tasktype=w.s.type; t.quality=w.s.type!=="Quality"&&(!!w.s.quality||w.si.some(j=>isQ(old[j]))); const o=w.si.length?old[w.si[0]]:null;
           if(o){ t.image_id=o.image_id; t.image_title=o.image_title; t.image_path=o.image_path; t.pics_per_page=o.pics_per_page; t.font_size=o.font_size; if(w.si.length<=1) t.cycletime=o.cycletime; } next.push(t); }
         else w.si.forEach(j=>next.push(old[j])); });
       old.forEach((o,j)=>{ if(!seen.has(j)) next.push(o); });  // never silently drop an original
@@ -854,19 +865,23 @@ function reviewPaste(r){
 let tab="vi", sel=new Set([0]), lastClick=0, pickImageFor=-1;
 const valueClass=t=>t.value_added?"VA":(t.tqc?"TQC":"NVA");
 function color(k){ return (ST.colors||{})[k]||DEFAULT_COLORS[k]||"#000"; }
-function shapeSVG(kind,n,size=26){ const c=color(kind), m=size/2; let s;
+function shapeSVG(kind,n,size=26,quality=false){ const c=color(kind), m=size/2; let s;
+  const oct=(R,col,w)=>`<polygon points="${Array.from({length:8},(_,k)=>{ const t=Math.PI/8+k*Math.PI/4; return (m+R*Math.cos(t)).toFixed(1)+","+(m+R*Math.sin(t)).toFixed(1); }).join(" ")}" fill="#fff" stroke="${col}" stroke-width="${w}" stroke-linejoin="round"/>`;
   if(kind==="Check") s=`<polygon points="${m},3 ${size-2},${size-4} 2,${size-4}" fill="#fff" stroke="${c}" stroke-width="3" stroke-linejoin="round"/>`;
   else if(kind==="Verify") s=`<circle cx="${m}" cy="${m}" r="${m-2.5}" fill="#fff" stroke="${c}" stroke-width="3"/>`;
   else if(kind==="Safety") s=`<polygon points="${m},2 ${size-2},${m} ${m},${size-2} 2,${m}" fill="#fff" stroke="${c}" stroke-width="3"/>`;
-  else if(kind==="Quality"){ const R=m-1.6; s=`<polygon points="${Array.from({length:8},(_,k)=>{ const t=Math.PI/8+k*Math.PI/4; return (m+R*Math.cos(t)).toFixed(1)+","+(m+R*Math.sin(t)).toFixed(1); }).join(" ")}" fill="#fff" stroke="${c}" stroke-width="3" stroke-linejoin="round"/>`; }
+  else if(kind==="Quality") s=oct(m-1.6,c,3);
   else s=`<rect x="3" y="3" width="${size-6}" height="${size-6}" fill="#fff" stroke="${c}" stroke-width="3"/>`;
   const ty=kind==="Check"?size*.74:size*.66, fs=size*(String(n??"").length>1&&kind==="Check"?.3:.38);
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="flex:none">${s}${n!=null?`<text x="${m}" y="${ty}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="#000" font-family="Arial">${n}</text>`:""}</svg>`; }
+  const inner=`${s}${n!=null?`<text x="${m}" y="${ty}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="#000" font-family="Arial">${n}</text>`:""}`;
+  // Quality-critical: the type shape sits inside a Quality octagon.
+  const body=quality&&kind!=="Quality"?`${oct(m-1.2,color("Quality"),2.2)}<g transform="translate(${m} ${m}) scale(.62) translate(${-m} ${-m})">${inner}</g>`:inner;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="flex:none">${body}</svg>`; }
 function changed(re=false){ dirty=true; if(re) render(); else renderHeader(); scheduleDraft(); }
 function renderHeader(){
   $("#fname").innerHTML=esc(D.name||"untitled.soe")+(dirty?'<span class="dot" title="Unsaved changes"></span>':"");
   document.title=(dirty?"* ":"")+(D.name||"untitled.soe")+" - StepSheet";
-  const t=D.tasks, counts={}; t.forEach(x=>counts[x.tasktype]=(counts[x.tasktype]||0)+1); const total=t.reduce((a,x)=>a+num(x.cycletime),0);
+  const t=D.tasks, counts={}; t.forEach(x=>counts[x.tasktype]=(counts[x.tasktype]||0)+1); const nq=t.filter(isQ).length; if(nq) counts["Integral to quality"]=nq; const total=t.reduce((a,x)=>a+num(x.cycletime),0);
   $("#status").innerHTML=`<span>${t.length} steps</span>`+Object.entries(counts).map(([k,v])=>`<span>${esc(k)}: ${v}</span>`).join("")+(total?`<span>Total cycle: ${total}</span>`:"")+
     `<span>${sel.size>1?sel.size+" rows selected":"Row "+(([...sel][0]??0)+1)+" selected"}</span>`+
     (lastDraft?`<span title="If this page is reloaded or closed, it reopens with this work.">Kept in this browser ${new Date(lastDraft).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}</span>`:"");
@@ -880,10 +895,11 @@ const numCell=i=>`<td class="num" data-sel="${i}" title="Click to select. Ctrl o
 function renderVI(){
   if(!D.tasks.length) return `<div class="empty"><div>No steps yet.</div><div class="row"><button class="lbtn primary" data-act="add">+ Add a step</button><button class="lbtn" data-act="open">Open a .soe file</button></div></div>`;
   const opt=(list,v)=>list.map(x=>`<option ${x===v?"selected":""}>${x}</option>`).join("");
-  return `<table class="grid"><thead><tr><th></th><th>Image</th><th>Quality</th><th>Page Type</th><th style="width:55%">Task</th></tr></thead><tbody>${D.tasks.map((t,i)=>`
+  return `<table class="grid"><thead><tr><th></th><th>Image</th><th>Step Type</th><th>Page Type</th><th style="width:55%">Task</th></tr></thead><tbody>${D.tasks.map((t,i)=>`
    <tr ${rowA(i)}>${numCell(i)}
     <td class="cimg"><div class="thumb" data-img="${i}" tabindex="0" role="button" aria-label="Picture for step ${i+1}" title="Click, drop or paste a picture">${t.image_id&&D.images[t.image_id]?`<img src="${imgURL(t.image_id)}" alt=""><button class="x" data-rmimg="${i}" aria-label="Remove picture">×</button>`:"Add picture"}</div></td>
-    <td class="half" data-label="Quality"><div class="typesel">${shapeSVG(t.tasktype,i+1)}<select class="s" id="tt${i}" data-f="tasktype" data-i="${i}" aria-label="Quality">${opt(TASK_TYPES,t.tasktype)}</select></div></td>
+    <td class="half" data-label="Step type"><div class="typesel">${shapeSVG(t.tasktype,i+1,isQ(t)?34:26,isQ(t))}<select class="s" id="tt${i}" data-f="tasktype" data-i="${i}" aria-label="Step type">${opt(TASK_TYPES,t.tasktype)}</select></div>
+      <label class="chk qchk" title="${t.tasktype==="Quality"?"This step is already a Quality step.":"Mark this step as integral to quality as well as its type. It prints inside a Quality octagon."}"><input type="checkbox" data-q="${i}" ${t.quality||t.tasktype==="Quality"?"checked":""} ${t.tasktype==="Quality"?"disabled":""}> Integral to quality</label></td>
     <td class="half" data-label="Page type"><select class="s" id="pp${i}" data-f="pics_per_page" data-i="${i}" aria-label="Page type">${opt(PAGE_TYPES,t.pics_per_page)}</select></td>
     <td data-label="Task"><textarea class="cap" id="cap${i}" spellcheck="true" data-f="caption" data-i="${i}" aria-label="Task for step ${i+1}" placeholder="Task description">${esc(t.caption)}</textarea>
       <div class="capmeta"><label for="fs${i}">Font</label><select class="s" id="fs${i}" data-f="font_size" data-i="${i}">${[8,9,10,11,12,13,14].map(x=>`<option ${String(x)===String(t.font_size)?"selected":""}>${x}</option>`).join("")}</select>${t.image_title?`<span title="${esc(t.image_path)}">${esc(t.image_title)}</span>`:""}</div></td>
@@ -920,7 +936,7 @@ function renderEs(){ const T=D.tasks, st=T.map(esState), n=k=>st.filter(x=>x===k
      <textarea id="esKeep" class="cap" style="min-height:160px;font-family:var(--mono);font-size:12px" spellcheck="false">${esc(keepTerms().join("\n"))}</textarea>
      <div class="acts" style="display:flex;gap:8px;margin-top:8px"><button class="lbtn primary" data-act="eskeepsave">Save list</button><button class="lbtn" data-act="eskeepreset">Reset to built-in list</button></div></details>
    <table class="grid"><thead><tr><th></th><th style="width:40%">English</th><th>Español</th><th></th></tr></thead><tbody>
-   ${T.map((t,i)=>`<tr ${rowA(i)}>${numCell(i)}<td class="ro" data-label="English">${shapeSVG(t.tasktype,null,16)} ${esc(t.caption)}</td>
+   ${T.map((t,i)=>`<tr ${rowA(i)}>${numCell(i)}<td class="ro" data-label="English">${shapeSVG(t.tasktype,null,isQ(t)?20:16,isQ(t))} ${esc(t.caption)}</td>
      <td data-label="Español"><textarea class="cap" id="es${i}" data-es="${i}" lang="es-MX" spellcheck="true" style="min-height:54px" aria-label="Spanish for step ${i+1}">${esc(t.caption_es||"")}</textarea></td>
      <td>${st[i]==="terms"?`<span class="chip warn" title="Should stay in English: ${esc(lostTerms(t).join(", "))}">Check: ${esc(lostTerms(t).slice(0,2).join(", "))}${lostTerms(t).length>2?"…":""}</span>`:({ok:'<span class="chip ok">Translated</span>',miss:'<span class="chip miss">Missing</span>',stale:'<span class="chip stale" title="The English was edited after this was translated">English changed</span>'})[st[i]]}</td></tr>`).join("")}
    </tbody></table></div>`; }
@@ -982,7 +998,7 @@ function esPasteDialog(){
       if(!n&&!Object.keys(r.head).length){ toast("No numbered lines found"); return; }
       close(); tab="es"; changed(true); toast(`Added Spanish for ${n} step${n===1?"":"s"}`); }; }); }
 function renderReview(){ const h=D.header, T=D.tasks;
-  const counts=TASK_TYPES.map(k=>[k,T.filter(t=>t.tasktype===k).length]).filter(x=>x[1]);
+  const counts=TASK_TYPES.map(k=>[k,T.filter(t=>t.tasktype===k).length]).concat([["Integral to quality",T.filter(isQ).length]]).filter(x=>x[1]);
   const total=T.reduce((a,t)=>a+num(t.cycletime),0), noPic=T.map((t,i)=>(!t.image_id||!D.images[t.image_id])?i+1:0).filter(Boolean);
   const meta=[h.udc4,h.udc3,h.udc5,h.udc6].filter(x=>(x||"").trim());
   return `<article class="review">
@@ -993,7 +1009,7 @@ function renderReview(){ const h=D.header, T=D.tasks;
     <p>Steps: ${T.length}. ${counts.map(([k,n])=>`${esc(k)}: ${n}`).join(", ")}.${total?` Total cycle time: ${total}.`:""}${noPic.length?` Steps without a picture: ${noPic.join(", ")}.`:" Every step has a picture."}</p>
     <ol>${T.map(t=>{ const w=WASTES.filter(x=>t.wastes[x]).map(x=>WASTE_NAMES[x]);
       const extra=[t.cycletime?`cycle time ${esc(t.cycletime)}`:"", t.value_added?"value added":t.tqc?"check and verify":"", w.length?`wastes: ${w.join(", ")}`:""].filter(Boolean);
-      return `<li><strong>[${esc(t.tasktype)}]</strong> ${esc((t.caption||"").trim())||"<em>(no task text)</em>"}${extra.length?` <span class="hint">(${extra.join("; ")})</span>`:""}</li>`; }).join("")}</ol>
+      return `<li><strong>[${esc(typeTag(t))}]</strong> ${esc((t.caption||"").trim())||"<em>(no task text)</em>"}${extra.length?` <span class="hint">(${extra.join("; ")})</span>`:""}</li>`; }).join("")}</ol>
     ${h.udc7?`<p class="hint">Footer: ${esc(h.udc7)}</p>`:""}
   </article>`; }
 function renderOpt(){ const d=D;
@@ -1061,6 +1077,7 @@ document.addEventListener("change",e=>{ const el=e.target;
   else if(el.dataset.sw!=null){ const t=D.tasks[+el.dataset.sw], toS=el.value==="setup", from=toS?t.work:t.setup, to=toS?t.setup:t.work; to.selected=true; from.selected=false; to.machine=from.machine||to.machine; to.labor=from.labor||to.labor; from.machine=from.labor=false; changed(true); }
   else if(el.dataset.ml!=null){ const t=D.tasks[+el.dataset.ml]; const g=(t.setup.selected&&!t.work.selected)?t.setup:t.work; g[el.value]=el.checked; changed(); }
   else if(el.dataset.waste!=null){ D.tasks[+el.dataset.waste].wastes[el.value]=el.checked; changed(true); }
+  else if(el.dataset.q!=null){ D.tasks[+el.dataset.q].quality=el.checked; changed(true); }
   else if(el.dataset.sec!=null){ D.security[el.dataset.sec]=el.checked?"true":"false"; changed(); }
   else if(el.dataset.st!=null){ ST[el.dataset.st]=el.type==="checkbox"?el.checked:el.value; saveSettings(); }
   else if(el.dataset.color!=null){ ST.colors[el.dataset.color]=el.value.toUpperCase(); saveSettings(); render(); }

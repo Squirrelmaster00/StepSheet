@@ -80,10 +80,22 @@ def _hex(c):
     return colors.HexColor(c)
 
 
-def _shape(c, kind, x, y, r, color, number=None, bold="Helvetica-Bold", fs=10):
+def _shape(c, kind, x, y, r, color, number=None, bold="Helvetica-Bold", fs=10, quality_color=None):
     """Step marker as in the original: outlined shape with the step number inside.
-    Check = triangle, Work Content = square, Verify = circle, Safety = diamond."""
+    Check = triangle, Work Content = square, Verify = circle, Safety = diamond.
+    A quality-critical step (quality_color given) sits inside a Quality octagon."""
     c.saveState()
+    if quality_color is not None and kind != "Quality":
+        import math
+        R = r * 1.52
+        p = c.beginPath()
+        for kk in range(8):
+            a = math.pi / 8 + kk * math.pi / 4
+            (p.moveTo if kk == 0 else p.lineTo)(x + R * math.cos(a), y + R * math.sin(a))
+        p.close()
+        c.setStrokeColor(quality_color); c.setFillColor(colors.white); c.setLineWidth(max(1.6, r * 0.2))
+        c.drawPath(p, fill=1, stroke=1)
+        r *= 0.8; fs *= 0.8
     c.setStrokeColor(color)
     c.setFillColor(colors.white)
     c.setLineWidth(max(1.8, r * 0.26))
@@ -185,7 +197,7 @@ def _header(c, doc, W, H, fonts, imgs, palette, lang="en"):
     rh = 24
     ty = top - 56
     cw1 = 118 * s
-    use_q = any(getattr(t, "tasktype", "") == "Quality" for t in doc.tasks)
+    use_q = any(getattr(t, "quality", False) or t.tasktype == "Quality" for t in doc.tasks)
     legend_w = (272 * s if W > H else 250) + ((70 * s if W > H else 62) if use_q else 0)
     c.setStrokeColor(colors.black)
     c.setLineWidth(1)
@@ -329,7 +341,8 @@ def build_instructions_pdf(doc: Document, out, palette=None, quality="Medium",
             r = top_h * 0.3
             if doc.shapes:
                 _shape(c, t.tasktype, ix + shape_w / 2, iy + ih_ - top_h / 2, r, accent,
-                       number=ti + 1, bold=bold, fs=max(7, r * 0.95))
+                       number=ti + 1, bold=bold, fs=max(7, r * 0.95),
+                       quality_color=_hex(palette["Quality"]) if getattr(t, "quality", False) else None)
             else:
                 c.setFillColor(black); c.setFont(bold, max(7, r))
                 c.drawCentredString(ix + shape_w / 2, iy + ih_ - top_h / 2 - r * .35, str(ti + 1))
@@ -391,7 +404,7 @@ def build_soe_pdf(doc: Document, out, palette=None, pdf_name: str = "") -> None:
     rows = []
     for i, t in enumerate(doc.tasks, 1):
         rows.append([
-            str(i), Paragraph(escape(t.caption.strip()), small), t.tasktype, t.cycletime,
+            str(i), Paragraph(escape(t.caption.strip()), small), t.tasktype + (" (Q)" if getattr(t, "quality", False) and t.tasktype != "Quality" else ""), t.cycletime,
             X if t.value_added else "", X if (t.non_value_added and not t.value_added and not t.tqc) else "",
             X if t.tqc else "",
             X if t.setup.get("selected") else "", X if t.work.get("selected") else "",

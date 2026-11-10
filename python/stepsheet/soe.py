@@ -23,8 +23,9 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field, asdict
 
 TASK_TYPES = ["Work Content", "Check", "Verify", "Safety", "Quality"]
-# Types the original .soe program doesn't know: saved as a fallback type it understands,
-# plus a <customtype> tag it ignores. StepSheet reads customtype back.
+# "Quality" is a step type the original .soe program doesn't know: saved as Safety plus a
+# <customtype> tag it ignores. Any other type can also be flagged quality-critical
+# (Check + Quality); that flag is saved in a <quality> tag the old program also ignores.
 CUSTOM_TYPES = {"Quality": "Safety"}
 PAGE_TYPES = [
     "1 Picture Landscape", "2 Picture Portrait", "4 Picture Landscape",
@@ -76,6 +77,7 @@ class Task:
     font_size: str = "12"
     caption_es: str = ""
     caption_es_src: str = ""
+    quality: bool = False   # quality-critical flag on top of the step type
     wastes: dict = field(default_factory=lambda: {w: False for w in WASTES})
     setup: dict = field(default_factory=lambda: {"selected": False, "machine": False, "labor": False})
     work: dict = field(default_factory=lambda: {"selected": True, "machine": False, "labor": False})
@@ -158,6 +160,7 @@ class Document:
                 caption_es=t.findtext("caption_es", ""),
                 caption_es_src=t.findtext("caption_es_src", ""),
             )
+            task.quality = (t.findtext("quality", "") or "").strip().lower() == "true"
             ct = (t.findtext("customtype", "") or "").strip()
             if ct in CUSTOM_TYPES:
                 task.tasktype = ct
@@ -227,11 +230,12 @@ class Document:
             o.append(cd_keep("ValueAdded", _s(t.value_added)) + cd_keep("NonValueAdded", _s(t.non_value_added))
                      + cd_keep("TQC", _s(t.tqc)))
             o.append("</Analysis>")
-            stored_type = CUSTOM_TYPES.get(t.tasktype, t.tasktype)
-            o.append(cd("cycletime", t.cycletime) + cd_keep("tasktype", stored_type)
+            o.append(cd("cycletime", t.cycletime) + cd_keep("tasktype", CUSTOM_TYPES.get(t.tasktype, t.tasktype))
                      + cd_keep("PicsPerPage", t.pics_per_page) + cd_keep("caption", t.caption))
             if t.tasktype in CUSTOM_TYPES:
                 o.append(cd_keep("customtype", t.tasktype))
+            elif t.quality:
+                o.append(cd_keep("quality", "true"))
             if (t.caption_es or "").strip():
                 o.append(cd_keep("caption_es", t.caption_es) + cd_keep("caption_es_src", t.caption_es_src))
             o.append("</Task>")
