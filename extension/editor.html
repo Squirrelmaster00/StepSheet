@@ -46,6 +46,7 @@ button,select,input,textarea{font:inherit;color:inherit}
 .sep{width:1px;height:22px;background:var(--bar-line);margin:0 3px}
 .btn{border:1px solid var(--bar-line);background:var(--bar-btn);color:var(--bar-ink);border-radius:5px;padding:4px 9px;cursor:pointer;white-space:nowrap}
 .btn:hover{filter:brightness(1.15)}
+.lbl-short{display:none}  /* phones swap to the short label (see max-width:760px) */
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .tabs{display:flex;gap:2px;padding-top:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow-x:auto;flex:none}
 .tabs button{border:1px solid var(--line);border-bottom:none;background:var(--panel2);padding:7px 14px;border-radius:7px 7px 0 0;cursor:pointer;color:var(--muted);white-space:nowrap}
@@ -139,6 +140,7 @@ h3{margin:2px 0 10px;font-size:14px}
   .bar{padding-top:calc(6px + env(safe-area-inset-top,0px));padding-bottom:6px}
   .bar-top .file{font-size:13px}
   .tb{flex-wrap:wrap;gap:6px}
+  .lbl-full{display:none} .lbl-short{display:inline}
   .tb::-webkit-scrollbar{display:none}
   .tb .rowtool,.tb .sep:last-of-type{display:none}
   .btn{padding:8px 12px;font-size:14px}
@@ -213,15 +215,15 @@ h3{margin:2px 0 10px;font-size:14px}
     <button class="btn" data-act="new">New</button>
     <button class="btn" data-act="open">Open…</button>
     <button class="btn" data-act="save" title="Ctrl+S">Save</button>
-    <button class="btn" data-act="saveas">Save As…</button>
+    <button class="btn adv" data-act="saveas">Save As…</button>
     <span class="sep"></span>
-    <button class="btn primary" data-act="pdf">Create Instructions PDF</button>
+    <button class="btn primary" data-act="pdf"><span class="lbl-full">Create Instructions PDF</span><span class="lbl-short">PDF</span></button>
     <button class="btn adv" data-act="soe">Create SOE PDF</button>
     <button class="btn adv" data-act="pdfes" title="Instructions PDF with the Spanish text">Spanish PDF</button>
-    <button class="btn" data-act="backupimg" title="Save every photo as a .zip you can keep in OneDrive / Files">⤓ Back up photos</button>
+    <button class="btn" data-act="backupimg" title="Save every photo as a .zip you can keep in OneDrive / Files"><span class="lbl-full">⤓ Back up photos</span><span class="lbl-short">⤓ Backup</span></button>
     <span class="sep"></span>
     <button class="btn adv" data-act="copilot" title="Copy, paste or export steps as text">Copilot / Excel ▾</button>
-    <button class="btn" data-act="install" id="installBtn" title="Install StepSheet as an app" hidden>⤓ Install app</button>
+    <button class="btn adv" data-act="install" id="installBtn" title="Install StepSheet as an app" hidden>⤓ Install app</button>
     <span class="sep"></span>
     <button class="btn rowtool" data-act="add">+ Row</button>
     <button class="btn rowtool" data-act="insert">Insert Above</button>
