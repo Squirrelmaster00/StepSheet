@@ -313,6 +313,34 @@ function zipOne(name,data){ const nb=latin1(name), crc=crc32(data); const le=(n,
   const lsize=30+nb.length; const central=[le(0x02014b50,4),le(20,2),le(20,2),le(0,2),le(0,2),le(0,2),le(0,2),le(crc,4),le(data.length,4),le(data.length,4),le(nb.length,2),le(0,2),le(0,2),le(0,2),le(0,2),le(0,4),le(0,4),nb];
   const csize=46+nb.length; const end=[le(0x06054b50,4),le(0,2),le(0,2),le(1,2),le(1,2),le(csize,4),le(lsize+data.length,4),le(0,2)];
   return new Blob([...local,data,...central,...end],{type:"application/zip"}); }
+// Store-only multi-file zip (photos are already JPEG, so no compression needed).
+function zipMany(files){ const le=(n,s)=>{const a=new Uint8Array(s);for(let i=0;i<s;i++)a[i]=(n>>>(8*i))&255;return a;};
+  const parts=[], central=[]; let offset=0;
+  for(const f of files){ const nb=latin1(f.name), crc=crc32(f.data), dlen=f.data.length;
+    parts.push(le(0x04034b50,4),le(20,2),le(0,2),le(0,2),le(0,2),le(0,2),le(crc,4),le(dlen,4),le(dlen,4),le(nb.length,2),le(0,2),nb,f.data);
+    central.push(le(0x02014b50,4),le(20,2),le(20,2),le(0,2),le(0,2),le(0,2),le(0,2),le(crc,4),le(dlen,4),le(dlen,4),le(nb.length,2),le(0,2),le(0,2),le(0,2),le(0,2),le(0,4),le(offset,4),nb);
+    offset+=30+nb.length+dlen; }
+  let csize=0; for(const f of files) csize+=46+latin1(f.name).length;
+  const end=[le(0x06054b50,4),le(0,2),le(0,2),le(files.length,2),le(files.length,2),le(csize,4),le(offset,4),le(0,2)];
+  return new Blob([...parts,...central,...end],{type:"application/zip"}); }
+// Save every photo as a .zip the operator can drop into OneDrive / Files — a backup
+// independent of the .soe, in case photos were taken straight into the app on a tablet.
+async function backupPhotos(){
+  const base=(D.name||"untitled").replace(/\.soe$/i,"");
+  const files=[], seen=new Set(); let n=0;
+  D.tasks.forEach((t,i)=>{ const id=t.image_id; if(!id||!D.images[id]) return;
+    const num=String(i+1).padStart(2,"0");
+    const slug=(t.caption||"").replace(/[^A-Za-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40);
+    let name=`${num}${slug?" "+slug:""}.jpg`, k=2;
+    while(seen.has(name.toLowerCase())){ name=`${num}-${k}.jpg`; k++; } seen.add(name.toLowerCase());
+    files.push({name,data:b64ToBytes(D.images[id])}); n++; });
+  if(D.logo_id && D.images[D.logo_id]) files.push({name:"logo.jpg",data:b64ToBytes(D.images[D.logo_id])});
+  if(!n){ toast("No photos to back up yet. Add pictures to steps first.",4000); return; }
+  const blob=zipMany(files);
+  const r=await saveBlob(`${base} photos.zip`,blob,[{description:"Zip of photos",accept:{"application/zip":[".zip"]}}]);
+  if(r.status==="saved") toast(`Backed up ${n} photo${n>1?"s":""}`+(r.download?" to your Downloads folder":"")+". Keep it in OneDrive / Files.",6000);
+  else if(r.status==="cancelled") toast("Backup cancelled");
+}
 
 /* ===================================================================== file I/O */
 let D=blankDoc(), fileHandle=null, dirty=false;
@@ -781,6 +809,7 @@ async function act(a,btn){ const T=D.tasks;
     case "eskeepreset": ST.es_keep=null; saveSettings(); render(); toast("Built-in list restored"); break;
     case "espaste": esPasteDialog(); break;
     case "soe": doPdf("soe"); break;
+    case "backupimg": backupPhotos(); break;
     case "copilot": copilotMenu(btn); break;
     case "install": pwaInstall(); break;
     case "add": T.push(blankTask(D.default_ppp)); sel=new Set([T.length-1]); if(tab==="opt") tab="vi"; changed(true); setTimeout(()=>{$("#main").scrollTop=1e9; const c=$("#cap"+(T.length-1)); c&&c.focus();},0); break;

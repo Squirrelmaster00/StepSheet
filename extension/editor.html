@@ -184,6 +184,20 @@ h3{margin:2px 0 10px;font-size:14px}
   .menu button{padding:12px 14px}
 }
 @media (max-width:760px) and (orientation:landscape){ .thumb{max-height:180px} }
+/* Tablets / touch laptops (iPad included): keep the desktop table but make it finger-friendly. */
+@media (pointer:coarse) and (min-width:761px){
+  .thumb .x{display:block;width:30px;height:30px;font-size:17px}
+  input,select,textarea,input.f,select.s,textarea.cap{font-size:16px}   /* 16px stops iOS zoom-on-focus */
+  .btn{padding:7px 12px}
+  .grid td{padding:9px 8px}
+  .grid td.num{font-size:15px}
+  .tabs button{padding:9px 16px}
+  .lbtn{padding:8px 13px}
+  .seg label{padding:8px 11px}
+  textarea.cap{min-height:82px}
+  select.s,input.f{min-height:38px}
+  .menu button{padding:10px 14px}
+}
 @media (prefers-reduced-motion:reduce){ .toast{transition:none} }
 </style></head><body>
 
@@ -201,6 +215,7 @@ h3{margin:2px 0 10px;font-size:14px}
     <button class="btn primary" data-act="pdf">Create Instructions PDF</button>
     <button class="btn" data-act="soe">Create SOE PDF</button>
     <button class="btn" data-act="pdfes" title="Instructions PDF with the Spanish text">Spanish PDF</button>
+    <button class="btn" data-act="backupimg" title="Save every photo as a .zip you can keep in OneDrive / Files">⤓ Back up photos</button>
     <span class="sep"></span>
     <button class="btn" data-act="copilot" title="Copy, paste or export steps as text">Copilot / Excel ▾</button>
     <button class="btn" data-act="install" id="installBtn" title="Install StepSheet as an app" hidden>⤓ Install app</button>
