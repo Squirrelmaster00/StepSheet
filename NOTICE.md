@@ -27,6 +27,13 @@ Any product, company, or brand names that a user enters into the application (fo
 example, in the terminology glossary) are the property of their respective owners and
 are used only for identification. No affiliation or endorsement is implied.
 
+## Icons and graphics
+
+The app's icons, including the Required PPE equipment icons, are original artwork
+created for this project (drawn as inline SVG). They are not stock photography and
+do not copy or redistribute third-party images. No external license or attribution
+is required to use them with StepSheet.
+
 ## AI assistance
 
 Portions of this project were produced with the help of an AI coding assistant and

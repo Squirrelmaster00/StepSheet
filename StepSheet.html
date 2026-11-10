@@ -1167,7 +1167,8 @@ async function svgToJpeg(svg,scale=2){
   } finally{ URL.revokeObjectURL(url); } }
 async function applyPPE(ids,stepIndex){ if(!ids.length) return;
   try{ const bytes=await svgToJpeg(ppeImageSVG(ids),2); const id=newId(); D.images[id]=bytesToB64(bytes);
-    const t=D.tasks[stepIndex]||D.tasks[0]; t.image_id=id; t.image_title="Required PPE";
+    let t=D.tasks[stepIndex]||D.tasks[0]; if(!t){ t=blankTask(D.default_ppp); D.tasks.push(t); }
+    t.image_id=id; t.image_title="Required PPE";
     if(!(t.caption||"").trim()) t.caption="Required PPE"; t.tasktype="Safety";
     changed(true); toast(`Added a Required PPE image with ${ids.length} item${ids.length>1?"s":""} to step ${(D.tasks.indexOf(t))+1}`,5000);
   }catch(e){ toast("Couldn't build the PPE image: "+e.message,5000); } }
