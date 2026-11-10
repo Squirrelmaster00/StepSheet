@@ -81,55 +81,63 @@ def _hex(c):
 
 
 def _shape(c, kind, x, y, r, color, number=None, bold="Helvetica-Bold", fs=10, quality_color=None):
-    """Step marker as in the original: outlined shape with the step number inside.
-    Check = triangle, Work Content = square, Verify = circle, Safety = diamond.
+    """Step marker: a softly tinted, round-cornered shape with the step number inside.
+    Check = triangle, Work Content = square, Verify = circle, Safety = diamond, Quality = octagon.
     A quality-critical step (quality_color given) sits inside a Quality octagon."""
+    import math
     c.saveState()
+    c.setLineJoin(1); c.setLineCap(1)
+
+    def rgb(col): return (col.red, col.green, col.blue)
+    def tint(col, a=0.16): return colors.Color(*[1 - (1 - v) * a for v in rgb(col)])
+    def light(col): r_, g_, b_ = rgb(col); return 0.2126 * r_ + 0.7152 * g_ + 0.0722 * b_ > 0.75
+    def darker(col): return colors.Color(*[v * 0.6 for v in rgb(col)])
+
+    def draw(k, rr, col):
+        lw = max(1.4, rr * 0.22)
+        def path(fill):
+            p = c.beginPath()
+            if k == "Check":
+                p.moveTo(x, y + rr * 1.16); p.lineTo(x + rr * 1.12, y - rr * .68); p.lineTo(x - rr * 1.12, y - rr * .68)
+            elif k == "Verify":
+                p.circle(x, y, rr * .98)
+            elif k == "Safety":
+                q = rr * 1.14
+                p.moveTo(x, y + q); p.lineTo(x + q, y); p.lineTo(x, y - q); p.lineTo(x - q, y)
+            elif k == "Quality":
+                R = rr * 1.1
+                for kk in range(8):
+                    a = math.pi / 8 + kk * math.pi / 4
+                    (p.moveTo if kk == 0 else p.lineTo)(x + R * math.cos(a), y + R * math.sin(a))
+            else:
+                q = rr * .88
+                p.rect(x - q, y - q, 2 * q, 2 * q)
+            if k != "Verify":
+                p.close()
+            c.drawPath(p, fill=fill, stroke=1)
+        c.setFillColor(tint(col))
+        if light(col):
+            c.setStrokeColor(darker(col)); c.setLineWidth(lw + 0.9); path(1)
+            c.setStrokeColor(col); c.setLineWidth(lw); path(0)
+        else:
+            c.setStrokeColor(col); c.setLineWidth(lw); path(1)
+
+    rr = r
     if quality_color is not None and kind != "Quality":
-        import math
-        R = r * 1.52
-        p = c.beginPath()
-        for kk in range(8):
-            a = math.pi / 8 + kk * math.pi / 4
-            (p.moveTo if kk == 0 else p.lineTo)(x + R * math.cos(a), y + R * math.sin(a))
-        p.close()
-        c.setStrokeColor(quality_color); c.setFillColor(colors.white); c.setLineWidth(max(1.6, r * 0.2))
-        c.drawPath(p, fill=1, stroke=1)
-        r *= 0.8; fs *= 0.8
-    c.setStrokeColor(color)
-    c.setFillColor(colors.white)
-    c.setLineWidth(max(1.8, r * 0.26))
-    ty = y
-    if kind == "Check":
-        p = c.beginPath(); p.moveTo(x, y + r); p.lineTo(x + r * 1.08, y - r * .78); p.lineTo(x - r * 1.08, y - r * .78); p.close()
-        c.drawPath(p, fill=1, stroke=1)
-        ty = y - r * .3
-    elif kind == "Verify":
-        c.circle(x, y, r, fill=1, stroke=1)
-    elif kind == "Safety":
-        p = c.beginPath(); p.moveTo(x, y + r * 1.1); p.lineTo(x + r * 1.1, y); p.lineTo(x, y - r * 1.1); p.lineTo(x - r * 1.1, y); p.close()
-        c.drawPath(p, fill=1, stroke=1)
-    elif kind == "Quality":
-        import math
-        R = r * 1.1
-        p = c.beginPath()
-        for kk in range(8):
-            a = math.pi / 8 + kk * math.pi / 4
-            px, py = x + R * math.cos(a), y + R * math.sin(a)
-            (p.moveTo if kk == 0 else p.lineTo)(px, py)
-        p.close(); c.drawPath(p, fill=1, stroke=1)
-    else:
-        c.rect(x - r * .9, y - r * .9, r * 1.8, r * 1.8, fill=1, stroke=1)
+        draw("Quality", r * 1.24, quality_color)
+        rr = r * 0.68; fs *= 0.76
+    draw(kind, rr, color)
     if number is not None:
-        if kind == "Check" and len(str(number)) > 1:
-            fs *= 0.78 if len(str(number)) == 2 else 0.62
-        if kind == "Quality" and len(str(number)) > 2:
-            fs *= 0.8
+        n = len(str(number))
+        if kind == "Check" and n > 1:
+            fs *= 0.8 if n == 2 else 0.64
+        elif n > 2:
+            fs *= 0.82
+        cy = y - rr * .2 if kind == "Check" else y
         c.setFillColor(colors.black)
         c.setFont(bold, fs)
-        c.drawCentredString(x, ty - fs * 0.35, str(number))
+        c.drawCentredString(x, cy - fs * 0.35, str(number))
     c.restoreState()
-
 
 def _fit(text, font, size, width, c):
     while size > 5 and c.stringWidth(text, font, size) > width:

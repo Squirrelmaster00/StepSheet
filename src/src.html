@@ -468,18 +468,26 @@ class PDF{
 const BLACK=[0,0,0], WHITE=[1,1,1];
 function pal(k){ return hexRGB((ST.colors||{})[k]||DEFAULT_COLORS[k]||"#000000"); }
 function fit(s,font,size,width){ while(size>5 && tw(s,font,size)>width) size-=0.5; return size; }
+// Step markers. Each shape gets a soft tint of its color, rounded corners and an optically balanced size
+// (a triangle and a diamond need to be a little larger than a square to look the same weight). Very light
+// colors such as yellow get a thin darker edge so they still read on white paper.
+const isLight=c=>0.2126*c[0]+0.7152*c[1]+0.0722*c[2]>0.75, darker=c=>c.map(v=>v*0.6);
 function shape(P,kind,x,y,r,color,number,fs,quality){
-  P.o("q");
-  if(quality&&kind!=="Quality"){ // quality-critical: the type shape sits inside a Quality octagon
-    const R=r*1.52, pts=[]; for(let k=0;k<8;k++){ const a=Math.PI/8+k*Math.PI/4; pts.push([x+R*Math.cos(a),y+R*Math.sin(a)]); }
-    P.stroke(pal("Quality")); P.fill(WHITE); P.lw(Math.max(1.6,r*0.2)); P.poly(pts); r*=0.8; fs*=0.8; }
-  P.stroke(color); P.fill(WHITE); P.lw(Math.max(1.8,r*0.26)); let ty=y;
-  if(kind==="Check"){ P.poly([[x,y+r],[x+r*1.08,y-r*.78],[x-r*1.08,y-r*.78]]); ty=y-r*.3; }
-  else if(kind==="Verify") P.circle(x,y,r);
-  else if(kind==="Safety") P.poly([[x,y+r*1.1],[x+r*1.1,y],[x,y-r*1.1],[x-r*1.1,y]]);
-  else if(kind==="Quality"){ const R=r*1.1; const pts=[]; for(let k=0;k<8;k++){ const t=Math.PI/8+k*Math.PI/4; pts.push([x+R*Math.cos(t),y+R*Math.sin(t)]); } P.poly(pts); }
-  else P.rect(x-r*.9,y-r*.9,r*1.8,r*1.8,"B");
-  if(number!=null){ const L=String(number).length; if(kind==="Check"&&L>1) fs*= L===2?0.78:0.62; if(kind==="Quality"&&L>2) fs*=0.8; P.fill(BLACK); P.text(x,ty-fs*.35,String(number),"bold",fs,"center"); }
+  P.o("q"); P.o("1 j 1 J");
+  const draw=(k,rr,col)=>{ const lw=Math.max(1.4,rr*0.22);
+    const path=mode=>{ if(k==="Check") P.poly([[x,y+rr*1.16],[x+rr*1.12,y-rr*.68],[x-rr*1.12,y-rr*.68]],mode);
+      else if(k==="Verify") P.circle(x,y,rr*.98,mode);
+      else if(k==="Safety") P.poly([[x,y+rr*1.14],[x+rr*1.14,y],[x,y-rr*1.14],[x-rr*1.14,y]],mode);
+      else if(k==="Quality"){ const R=rr*1.1, pts=[]; for(let i=0;i<8;i++){ const a=Math.PI/8+i*Math.PI/4; pts.push([x+R*Math.cos(a),y+R*Math.sin(a)]); } P.poly(pts,mode); }
+      else P.rect(x-rr*.88,y-rr*.88,rr*1.76,rr*1.76,mode); };
+    P.fill(mix(col,.16));
+    if(isLight(col)){ P.stroke(darker(col)); P.lw(lw+0.9); path("B"); P.stroke(col); P.lw(lw); path("S"); }
+    else { P.stroke(col); P.lw(lw); path("B"); } };
+  let rr=r;
+  if(quality&&kind!=="Quality"){ draw("Quality",r*1.24,pal("Quality")); rr=r*0.68; fs*=0.76; }   // type shape inside a Quality octagon
+  draw(kind,rr,color);
+  if(number!=null){ const L=String(number).length; if(kind==="Check"&&L>1) fs*= L===2?0.8:0.64; else if(L>2) fs*=0.82;
+    const cy=kind==="Check"?y-rr*.2:y; P.fill(BLACK); P.text(x,cy-fs*.35,String(number),"bold",fs,"center"); }
   P.o("Q");
 }
 function cellText(P,txt,x,y,w,h,font,size,align="left"){
@@ -865,18 +873,20 @@ function reviewPaste(r){
 let tab="vi", sel=new Set([0]), lastClick=0, pickImageFor=-1;
 const valueClass=t=>t.value_added?"VA":(t.tqc?"TQC":"NVA");
 function color(k){ return (ST.colors||{})[k]||DEFAULT_COLORS[k]||"#000"; }
-function shapeSVG(kind,n,size=26,quality=false){ const c=color(kind), m=size/2; let s;
-  const oct=(R,col,w)=>`<polygon points="${Array.from({length:8},(_,k)=>{ const t=Math.PI/8+k*Math.PI/4; return (m+R*Math.cos(t)).toFixed(1)+","+(m+R*Math.sin(t)).toFixed(1); }).join(" ")}" fill="#fff" stroke="${col}" stroke-width="${w}" stroke-linejoin="round"/>`;
-  if(kind==="Check") s=`<polygon points="${m},3 ${size-2},${size-4} 2,${size-4}" fill="#fff" stroke="${c}" stroke-width="3" stroke-linejoin="round"/>`;
-  else if(kind==="Verify") s=`<circle cx="${m}" cy="${m}" r="${m-2.5}" fill="#fff" stroke="${c}" stroke-width="3"/>`;
-  else if(kind==="Safety") s=`<polygon points="${m},2 ${size-2},${m} ${m},${size-2} 2,${m}" fill="#fff" stroke="${c}" stroke-width="3"/>`;
-  else if(kind==="Quality") s=oct(m-1.6,c,3);
-  else s=`<rect x="3" y="3" width="${size-6}" height="${size-6}" fill="#fff" stroke="${c}" stroke-width="3"/>`;
-  const ty=kind==="Check"?size*.74:size*.66, fs=size*(String(n??"").length>1&&kind==="Check"?.3:.38);
-  const inner=`${s}${n!=null?`<text x="${m}" y="${ty}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="#000" font-family="Arial">${n}</text>`:""}`;
-  // Quality-critical: the type shape sits inside a Quality octagon.
-  const body=quality&&kind!=="Quality"?`${oct(m-1.2,color("Quality"),2.2)}<g transform="translate(${m} ${m}) scale(.62) translate(${-m} ${-m})">${inner}</g>`:inner;
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="flex:none">${body}</svg>`; }
+function shapeSVG(kind,n,size=26,quality=false){ const m=size/2;
+  const css=c=>`rgb(${c.map(v=>Math.round(v*255)).join(",")})`, f=v=>v.toFixed(1);
+  const draw=(k,r)=>{ const hex=color(k), c=hexRGB(hex), sw=Math.max(1.8,r*0.24); let d;
+    if(k==="Check") d=`M${f(m)} ${f(m-r*1.16)} L${f(m+r*1.12)} ${f(m+r*.68)} L${f(m-r*1.12)} ${f(m+r*.68)}Z`;
+    else if(k==="Verify"){ const q=r*.98; d=`M${f(m-q)} ${f(m)} a${f(q)} ${f(q)} 0 1 0 ${f(2*q)} 0 a${f(q)} ${f(q)} 0 1 0 ${f(-2*q)} 0Z`; }
+    else if(k==="Safety"){ const q=r*1.14; d=`M${f(m)} ${f(m-q)} L${f(m+q)} ${f(m)} L${f(m)} ${f(m+q)} L${f(m-q)} ${f(m)}Z`; }
+    else if(k==="Quality"){ const R=r*1.1; d="M"+Array.from({length:8},(_,i)=>{ const t=Math.PI/8+i*Math.PI/4; return f(m+R*Math.cos(t))+" "+f(m+R*Math.sin(t)); }).join(" L")+"Z"; }
+    else { const q=r*.88; d=`M${f(m-q)} ${f(m-q)} h${f(2*q)} v${f(2*q)} h${f(-2*q)}Z`; }
+    return (isLight(c)?`<path d="${d}" fill="none" stroke="${css(darker(c))}" stroke-width="${f(sw+1.2)}" stroke-linejoin="round"/>`:"")+
+      `<path d="${d}" fill="${css(mix(c,.16))}" stroke="${hex}" stroke-width="${f(sw)}" stroke-linejoin="round"/>`; };
+  const combo=quality&&kind!=="Quality", R0=(m-1.8)/1.16, r=combo?R0*.6:R0;
+  const L=String(n??"").length, fs=r*(kind==="Check"&&L>1?.82:L>2?.84:1.02), cy=kind==="Check"?m+r*.2:m;
+  const num=n!=null?`<text x="${m}" y="${f(cy+fs*.36)}" text-anchor="middle" font-size="${f(fs)}" font-weight="700" fill="#000" font-family="Arial,Helvetica,sans-serif">${n}</text>`:"";
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="flex:none">${combo?draw("Quality",(m-1.8)/1.1):""}${draw(kind,r)}${num}</svg>`; }
 function changed(re=false){ dirty=true; if(re) render(); else renderHeader(); scheduleDraft(); }
 function renderHeader(){
   $("#fname").innerHTML=esc(D.name||"untitled.soe")+(dirty?'<span class="dot" title="Unsaved changes"></span>':"");
