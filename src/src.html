@@ -187,6 +187,8 @@ h3{margin:2px 0 10px;font-size:14px}
   select.s,input.f{min-height:38px}
   .menu button{padding:10px 14px}
 }
+/* Cycle/Value, Activity, Wastes and Spanish are desktop-only; hide on touch (phones + tablets). */
+@media (pointer:coarse){ .tabs .tab-adv{display:none} }
 @media (prefers-reduced-motion:reduce){ .toast{transition:none} }
 </style>
 
@@ -219,11 +221,11 @@ h3{margin:2px 0 10px;font-size:14px}
 </header>
 <nav class="tabs" id="tabs">
   <button data-tab="vi" class="on">Steps</button>
-  <button data-tab="cv">Cycle / Value</button>
-  <button data-tab="act">Activity</button>
-  <button data-tab="waste">Wastes</button>
+  <button data-tab="cv" class="tab-adv">Cycle / Value</button>
+  <button data-tab="act" class="tab-adv">Activity</button>
+  <button data-tab="waste" class="tab-adv">Wastes</button>
   <button data-tab="opt">Options</button>
-  <button data-tab="es" title="Spanish translation">Spanish</button>
+  <button data-tab="es" class="tab-adv" title="Spanish translation">Spanish</button>
   <button data-tab="review" title="Plain-text view for Copilot in the Edge sidebar">Review</button>
 </nav>
 <div class="mainwrap"><main id="main"></main></div>
@@ -641,7 +643,10 @@ async function doSave(as){
 function afterSave(name){ if(name && /\.soe$/i.test(name)) D.name=name; dirty=false; scheduleDraft(); if(ST.remember_header){ ST.saved_header={...D.header}; saveSettings(); } renderHeader(); }
 async function doPdf(kind){
   const base=(D.name||"untitled").replace(/\.soe$/i,""); const name=base+(kind==="soe"?" SOE.pdf":kind==="es"?" (Español).pdf":".pdf");
-  if(kind==="es"){ const miss=D.tasks.filter(t=>!(t.caption_es||"").trim()).length; if(miss===D.tasks.length){ toast("No Spanish yet. Use the Spanish tab to translate the steps first.",5000); tab="es"; render(); return; } }
+  if(kind==="es"){ const miss=D.tasks.filter(t=>!(t.caption_es||"").trim()).length; if(miss===D.tasks.length){
+    if(coarsePointer()) toast("This file has no Spanish yet. Add it on a computer (Spanish tab), then make the Spanish PDF here.",6000);
+    else { toast("No Spanish yet. Use the Spanish tab to translate the steps first.",5000); tab="es"; render(); }
+    return; } }
   toast("Building PDF...",20000);
   try{ const blob=kind==="soe"?await buildSoe(D,name):await buildInstructions(D,name,(a,b)=>toast(`Building PDF... ${a} of ${b} steps`,20000),kind==="es"?"es":"");
     const r=await saveBlob(name,blob,[{description:"PDF",accept:{"application/pdf":[".pdf"]}}]);

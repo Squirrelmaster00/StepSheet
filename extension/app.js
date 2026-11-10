@@ -397,7 +397,10 @@ async function doSave(as){
 function afterSave(name){ if(name && /\.soe$/i.test(name)) D.name=name; dirty=false; scheduleDraft(); if(ST.remember_header){ ST.saved_header={...D.header}; saveSettings(); } renderHeader(); }
 async function doPdf(kind){
   const base=(D.name||"untitled").replace(/\.soe$/i,""); const name=base+(kind==="soe"?" SOE.pdf":kind==="es"?" (Español).pdf":".pdf");
-  if(kind==="es"){ const miss=D.tasks.filter(t=>!(t.caption_es||"").trim()).length; if(miss===D.tasks.length){ toast("No Spanish yet. Use the Spanish tab to translate the steps first.",5000); tab="es"; render(); return; } }
+  if(kind==="es"){ const miss=D.tasks.filter(t=>!(t.caption_es||"").trim()).length; if(miss===D.tasks.length){
+    if(coarsePointer()) toast("This file has no Spanish yet. Add it on a computer (Spanish tab), then make the Spanish PDF here.",6000);
+    else { toast("No Spanish yet. Use the Spanish tab to translate the steps first.",5000); tab="es"; render(); }
+    return; } }
   toast("Building PDF...",20000);
   try{ const blob=kind==="soe"?await buildSoe(D,name):await buildInstructions(D,name,(a,b)=>toast(`Building PDF... ${a} of ${b} steps`,20000),kind==="es"?"es":"");
     const r=await saveBlob(name,blob,[{description:"PDF",accept:{"application/pdf":[".pdf"]}}]);
