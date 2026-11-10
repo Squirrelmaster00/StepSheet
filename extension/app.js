@@ -9,6 +9,8 @@ const WASTES=["overproduction","overprocessing","waiting","transport","inventory
 const WASTE_NAMES={overproduction:"Overproduction",overprocessing:"Overprocessing",waiting:"Waiting",transport:"Transport",inventory:"Inventory",operatormovement:"Movement",defects:"Defects"};
 const SECURITY_FLAGS=["Encrypt128Bit","Encrypt40Bit","AllowPrinting","AllowCopy","AllowFillIn","AllowModifyAnnotation","AllowModifyContent","AllowAssembly","AllowScreenReaders","AllowDegradedPrinting"];
 const HEADER_LABELS={udc1:"Title",udc2:"Subtitle",udc3:"Row 2, box 1",udc4:"Row 2, box 2",udc5:"Row 3, box 1",udc6:"Row 3, box 2",udc7:"Footer"};
+// Example hints shown as placeholders in the Options header rows (generic, no brand names).
+const HEADER_HINTS={udc1:"WORK INSTRUCTION TITLE",udc2:"Subtitle (optional)",udc3:"REVISION DATE: XX/XX/XX",udc4:"OPS-SOP-XXXXXX",udc5:"COMPLETION DATE: XX/XX/XX",udc6:"CREATED BY: Your Name Here",udc7:"This document is intended for internal use only."};
 const LAYOUTS={"1 Picture Landscape":[1,1,"L"],"2 Picture Portrait":[1,2,"P"],"4 Picture Landscape":[2,2,"L"],"4 Picture Portrait":[2,2,"P"],"6 Picture Landscape":[3,2,"L"],"6 Picture Portrait":[2,3,"P"],"9 Picture Portrait":[3,3,"P"]};
 const QUALITY_PX={Low:800,Medium:1400,High:2400,Original:0};
 const DEFAULT_COLORS={"Check":"#FF0000","Work Content":"#FFFF00","Verify":"#0000FF","Safety":"#FF6347","Quality":"#00A651","Border":"#000000"};
@@ -736,7 +738,7 @@ function renderReview(){ const h=D.header, T=D.tasks;
 function renderOpt(){ const d=D;
   const flags={AllowPrinting:"Printing",AllowModifyContent:"Modify Contents",AllowCopy:"Copy",AllowModifyAnnotation:"Modify Annotations",AllowFillIn:"Fill In",AllowScreenReaders:"Screen Readers",AllowAssembly:"Assembly",AllowDegradedPrinting:"Degraded Printing"};
   return `<div class="opts">
-  <div class="card"><h3>Header</h3>${Object.entries(HEADER_LABELS).map(([k,l])=>`<div class="fr"><label for="h_${k}">${l}</label><input class="f" id="h_${k}" data-h="${k}" value="${esc(d.header[k])}" spellcheck="true"></div>`).join("")}
+  <div class="card"><h3>Header</h3>${Object.entries(HEADER_LABELS).map(([k,l])=>`<div class="fr"><label for="h_${k}">${l}</label><input class="f" id="h_${k}" data-h="${k}" value="${esc(d.header[k])}" placeholder="${esc(HEADER_HINTS[k]||"")}" spellcheck="true"></div>`).join("")}
     <div class="fr"><label>Logo</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${d.logo_id&&d.images[d.logo_id]?`<img class="logoprev" src="${imgURL(d.logo_id)}" alt="Logo">`:'<span class="hint">None</span>'}<button class="lbtn" data-act="logo">Choose…</button>${d.logo_id?'<button class="lbtn danger" data-act="nologo">Remove</button>':""}</div></div>
     <label class="chk"><input type="checkbox" id="o_rem" data-st="remember_header" ${ST.remember_header?"checked":""}> Remember header for new files</label></div>
   <div class="card"><h3>System</h3>
