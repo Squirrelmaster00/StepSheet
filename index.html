@@ -378,7 +378,12 @@ async function toJpeg(blob, maxPx, q=0.85){ // decode any picture, shrink if nee
   const c=document.createElement("canvas"); c.width=w; c.height=h; const x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,w,h); x.drawImage(bmp,0,0,w,h); bmp.close?.();
   const out=await new Promise(r=>c.toBlob(r,"image/jpeg",q)); return new Uint8Array(await out.arrayBuffer());
 }
-async function addImage(file){ const bytes=await toJpeg(file,(QUALITY_PX[ST.image_quality]||1400)+200); const id=newId(); D.images[id]=bytesToB64(bytes); return id; }
+// On touch devices the in-app camera capture is usually the only copy of the photo,
+// so never downscale it — keep full resolution regardless of the quality setting.
+function coarsePointer(){ return !!(window.matchMedia && matchMedia("(pointer:coarse)").matches); }
+async function addImage(file){ const full=coarsePointer();
+  const bytes=await toJpeg(file, full?0:(QUALITY_PX[ST.image_quality]||1400)+200, full?0.92:0.85);
+  const id=newId(); D.images[id]=bytesToB64(bytes); return id; }
 function jpegInfo(b){ // width, height, components from the SOF marker
   let i=2; while(i<b.length){ if(b[i]!==0xFF){i++;continue;} const m=b[i+1]; const len=(b[i+2]<<8)|b[i+3];
     if(m>=0xC0&&m<=0xCF&&m!==0xC4&&m!==0xC8&&m!==0xCC) return {h:(b[i+5]<<8)|b[i+6],w:(b[i+7]<<8)|b[i+8],c:b[i+9]};
@@ -989,7 +994,9 @@ function renderOpt(){ const d=D;
     <label class="chk"><input type="checkbox" id="o_rem" data-st="remember_header" ${ST.remember_header?"checked":""}> Remember header for new files</label></div>
   <div class="card"><h3>System</h3>
     <div class="fr"><label for="o_ppp">Pictures per page</label><div style="display:flex;gap:6px;flex-wrap:wrap"><select class="s" id="o_ppp" data-o="default_ppp">${PAGE_TYPES.map(x=>`<option ${x===d.default_ppp?"selected":""}>${x}</option>`).join("")}</select><button class="lbtn" data-act="pppall">Apply to all rows</button></div></div>
-    <div class="fr"><label for="o_q">Image resize quality</label><select class="s" id="o_q" data-st="image_quality">${Object.keys(QUALITY_PX).map(x=>`<option ${x===ST.image_quality?"selected":""}>${x}</option>`).join("")}</select></div>
+    <div class="fr"><label for="o_q">Image resize quality</label>${coarsePointer()
+      ? `<span class="hint" style="align-self:center">Full resolution — photos added on this device are kept at full size (no downscaling), since the in-app capture may be the only copy.</span>`
+      : `<select class="s" id="o_q" data-st="image_quality">${Object.keys(QUALITY_PX).map(x=>`<option ${x===ST.image_quality?"selected":""}>${x}</option>`).join("")}</select>`}</div>
     <label class="chk"><input type="checkbox" id="o_b" data-o="borders" ${d.borders?"checked":""}> Color borders</label>
     <label class="chk"><input type="checkbox" id="o_s" data-o="shapes" ${d.shapes?"checked":""}> Shapes around step numbers</label>
     <label class="chk"><input type="checkbox" id="o_a" data-o="advanced" ${d.advanced?"checked":""}> Advanced analyzer</label>
