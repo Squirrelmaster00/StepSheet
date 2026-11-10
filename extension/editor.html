@@ -35,7 +35,7 @@ html,body{height:100%}
 body{margin:0;font:13px/1.4 var(--font);color:var(--ink);background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
 button,select,input,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--focus);outline-offset:1px}
-.bar{background:var(--bar);color:var(--bar-ink);padding-block:7px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:6px}
+.bar{background:var(--bar);color:var(--bar-ink);padding-top:calc(7px + env(safe-area-inset-top,0px));padding-bottom:7px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:6px}
 .bar-top{display:flex;align-items:center;gap:10px;min-width:0}
 .brand{font-weight:700;display:flex;align-items:center;gap:8px;white-space:nowrap}
 .mark{width:20px;height:20px;flex:none}
@@ -135,7 +135,7 @@ h3{margin:2px 0 10px;font-size:14px}
 /* Phones and small tablets: steps become cards, toolbar swipes sideways, row tools sit at the bottom. */
 @media (max-width:760px){
   body{font-size:15px}
-  .bar{padding-block:6px}
+  .bar{padding-top:calc(6px + env(safe-area-inset-top,0px));padding-bottom:6px}
   .bar-top .file{font-size:13px}
   .tb{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin-inline:-4px;padding-inline:4px;padding-bottom:2px}
   .tb::-webkit-scrollbar{display:none}
@@ -144,8 +144,8 @@ h3{margin:2px 0 10px;font-size:14px}
   .tabs{padding-top:6px} .tabs button{padding:9px 13px}
   main{border-radius:0 7px 0 0}
   .status{display:none}
-  .mobbar{display:grid;grid-template-columns:repeat(6,1fr);background:var(--bar);border-top:1px solid var(--bar-line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);flex:none}
-  .mobbar button{background:none;border:none;color:var(--bar-ink);padding:7px 2px 6px;font-size:17px;line-height:1.1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
+  .mobbar{display:grid;grid-template-columns:repeat(6,1fr);background:var(--bar);border-top:1px solid var(--bar-line);padding-top:4px;padding-bottom:calc(6px + env(safe-area-inset-bottom,0px));padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);flex:none}
+  .mobbar button{background:none;border:none;color:var(--bar-ink);padding:8px 2px;font-size:20px;line-height:1.1;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer}
   .mobbar button span{font-size:11px;opacity:.85}
   .mobbar button:disabled{opacity:.35}
   input,select,textarea,.f,.s,textarea.cap{font-size:16px!important}
