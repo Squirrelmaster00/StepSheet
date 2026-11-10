@@ -910,16 +910,21 @@ async function svgToJpeg(svg,scale=2){
   } finally{ URL.revokeObjectURL(url); } }
 async function applyPPE(ids,stepIndex){ if(!ids.length) return;
   try{ const bytes=await svgToJpeg(ppeImageSVG(ids),2); const id=newId(); D.images[id]=bytesToB64(bytes);
-    let t=D.tasks[stepIndex]||D.tasks[0]; if(!t){ t=blankTask(D.default_ppp); D.tasks.push(t); }
+    // The PPE image only ever goes on step 1. If step 1 is a real work step (has its own picture or
+    // wording), a new step 1 is inserted above it instead of overwriting anything.
+    let t=D.tasks[0], inserted=false;
+    const isPpeStep=t&&(t.image_title==="Required PPE"||(!t.image_id&&(!(t.caption||"").trim()||/^required\s*p\.?\s*p\.?\s*e/i.test(t.caption.trim()))));
+    if(!isPpeStep){ t=blankTask(D.default_ppp); D.tasks.unshift(t); inserted=true; }
+    sel=new Set([0]);
     t.image_id=id; t.image_title="Required PPE";
     if(!(t.caption||"").trim()) t.caption="Required PPE"; t.tasktype="Safety";
-    changed(true); toast(`Added a Required PPE image with ${ids.length} item${ids.length>1?"s":""} to step ${(D.tasks.indexOf(t))+1}`,5000);
+    changed(true); toast(`Required PPE image with ${ids.length} item${ids.length>1?"s":""} `+(inserted?"added as a new step 1; your other steps were not changed":"placed on step 1"),5000);
   }catch(e){ toast("Couldn't build the PPE image: "+e.message,5000); } }
 function ppeBuilder(){
   const stepIndex=sorted()[0]??0; let picked=new Set();
   const tiles=PPE_ITEMS.map(p=>`<button type="button" class="ppetile" data-ppe="${p.id}"><svg viewBox="0 0 100 100" aria-hidden="true">${p.svg}</svg><span class="pl">${esc(p.label)}</span></button>`).join("");
   modal(`<h2>Build Required PPE image</h2>
-    <p class="hint">Tap the PPE required for this job — each one snaps into a single labeled image placed on step ${stepIndex+1}.</p>
+    <p class="hint">Tap the PPE required for this job — each one snaps into a single labeled image. It always goes on step 1 and never replaces another step.</p>
     <div class="revtools"><button class="lbtn" data-set="weld">Select welding set</button><button class="lbtn" data-set="">Clear</button></div>
     <div class="ppegrid">${tiles}</div>
     <div class="acts"><button class="lbtn" data-x>Cancel</button><button class="lbtn primary" data-apply disabled>Add image</button></div>`,
