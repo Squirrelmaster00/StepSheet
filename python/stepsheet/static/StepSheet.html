@@ -139,7 +139,7 @@ h3{margin:2px 0 10px;font-size:14px}
   body{font-size:15px}
   .bar{padding-top:calc(6px + env(safe-area-inset-top,0px));padding-bottom:6px}
   .bar-top .file{font-size:13px}
-  .tb{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin-inline:-4px;padding-inline:4px;padding-bottom:2px}
+  .tb{flex-wrap:wrap;gap:6px}
   .tb::-webkit-scrollbar{display:none}
   .tb .rowtool,.tb .sep:last-of-type{display:none}
   .btn{padding:8px 12px;font-size:14px}
@@ -200,8 +200,8 @@ h3{margin:2px 0 10px;font-size:14px}
   select.s,input.f{min-height:38px}
   .menu button{padding:10px 14px}
 }
-/* Cycle/Value, Activity, Wastes and Spanish are desktop-only; hide on touch (phones + tablets). */
-@media (pointer:coarse){ .tabs .tab-adv{display:none} }
+/* Desktop-only on touch (phones + tablets): analysis/Spanish tabs and their toolbar actions. */
+@media (pointer:coarse){ .tabs .tab-adv,.tb .adv{display:none} .tb .sep{display:none} }
 @media (prefers-reduced-motion:reduce){ .toast{transition:none} }
 </style>
 
@@ -217,11 +217,11 @@ h3{margin:2px 0 10px;font-size:14px}
     <button class="btn" data-act="saveas">Save As…</button>
     <span class="sep"></span>
     <button class="btn primary" data-act="pdf">Create Instructions PDF</button>
-    <button class="btn" data-act="soe">Create SOE PDF</button>
-    <button class="btn" data-act="pdfes" title="Instructions PDF with the Spanish text">Spanish PDF</button>
+    <button class="btn adv" data-act="soe">Create SOE PDF</button>
+    <button class="btn adv" data-act="pdfes" title="Instructions PDF with the Spanish text">Spanish PDF</button>
     <button class="btn" data-act="backupimg" title="Save every photo as a .zip you can keep in OneDrive / Files">⤓ Back up photos</button>
     <span class="sep"></span>
-    <button class="btn" data-act="copilot" title="Copy, paste or export steps as text">Copilot / Excel ▾</button>
+    <button class="btn adv" data-act="copilot" title="Copy, paste or export steps as text">Copilot / Excel ▾</button>
     <button class="btn" data-act="install" id="installBtn" title="Install StepSheet as an app" hidden>⤓ Install app</button>
     <span class="sep"></span>
     <button class="btn rowtool" data-act="add">+ Row</button>
