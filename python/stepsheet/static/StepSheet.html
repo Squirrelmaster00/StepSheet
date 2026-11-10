@@ -204,6 +204,7 @@ h3{margin:2px 0 10px;font-size:14px}
     <button class="btn" data-act="pdfes" title="Instructions PDF with the Spanish text">Spanish PDF</button>
     <span class="sep"></span>
     <button class="btn" data-act="copilot" title="Copy, paste or export steps as text">Copilot / Excel ▾</button>
+    <button class="btn" data-act="install" id="installBtn" title="Install StepSheet as an app" hidden>⤓ Install app</button>
     <span class="sep"></span>
     <button class="btn rowtool" data-act="add">+ Row</button>
     <button class="btn rowtool" data-act="insert">Insert Above</button>
@@ -1022,6 +1023,7 @@ async function act(a,btn){ const T=D.tasks;
     case "espaste": esPasteDialog(); break;
     case "soe": doPdf("soe"); break;
     case "copilot": copilotMenu(btn); break;
+    case "install": pwaInstall(); break;
     case "add": T.push(blankTask(D.default_ppp)); sel=new Set([T.length-1]); if(tab==="opt") tab="vi"; changed(true); setTimeout(()=>{$("#main").scrollTop=1e9; const c=$("#cap"+(T.length-1)); c&&c.focus();},0); break;
     case "insert": { const i=sorted()[0]??0; T.splice(i,0,blankTask(D.default_ppp)); sel=new Set([i]); changed(true); break; }
     case "dup": { const ix=sorted(); const cp=ix.map(i=>JSON.parse(JSON.stringify(T[i]))); const at=ix[ix.length-1]+1; T.splice(at,0,...cp); sel=new Set(cp.map((_,k)=>at+k)); changed(true); break; }
@@ -1043,7 +1045,43 @@ function toastUndo(msg){ modalLess(msg); }
 function modalLess(msg){ const t=$("#toast"); t.innerHTML=`${esc(msg)} <button class="lbtn" data-act="undo" style="margin-left:8px;pointer-events:auto">Undo</button>`; t.style.pointerEvents="auto"; t.classList.add("on"); clearTimeout(t._h); t._h=setTimeout(()=>{t.classList.remove("on"); t.style.pointerEvents="none";},6000); }
 
 if(window.matchMedia&&matchMedia("(pointer:coarse)").matches){ $("#soeInput").removeAttribute("accept"); }
+/* ===================================================================== PWA install prompt */
+let deferredPrompt=null;
+const isStandalone=()=>matchMedia("(display-mode: standalone)").matches || navigator.standalone===true;
+const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+function setupInstall(){
+  // Only in the hosted, installable PWA build (index.html links a manifest); stays hidden
+  // in the single-file app and the extension editor.
+  if(!document.querySelector('link[rel="manifest"]')) return;
+  const btn=$("#installBtn"); if(!btn || isStandalone()) return;
+  // Chrome/Edge fire this when the app meets install criteria; we show our own button.
+  window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferredPrompt=e; btn.hidden=false; });
+  window.addEventListener("appinstalled",()=>{ deferredPrompt=null; btn.hidden=true; toast("StepSheet installed"); });
+  // iOS Safari never fires beforeinstallprompt and has no auto-prompt — surface the manual steps.
+  if(isIOS()) btn.hidden=false;
+}
+function pwaInstall(){
+  if(deferredPrompt){ deferredPrompt.prompt(); deferredPrompt.userChoice.finally(()=>{ deferredPrompt=null; const b=$("#installBtn"); if(b) b.hidden=true; }); return; }
+  const ios=isIOS();
+  modal(`<h2>Install StepSheet</h2>`+(ios?
+    `<p>In <b>Safari</b> (Chrome/Edge on iPhone can't install apps — use Safari):</p>
+     <ol style="line-height:1.9;padding-left:20px;margin:6px 0">
+       <li>Tap the <b>Share</b> button (square with an up-arrow) at the bottom of Safari.</li>
+       <li>Scroll down and tap <b>Add to Home Screen</b>.</li>
+       <li>Tap <b>Add</b>. StepSheet opens full-screen from your home screen and works offline.</li>
+     </ol>`:
+    `<p>Your browser didn't offer an automatic install. You can still add StepSheet:</p>
+     <ul style="line-height:1.8;padding-left:20px;margin:6px 0">
+       <li><b>Chrome / Edge (computer):</b> click the <b>install icon</b> in the address bar (a monitor with a down-arrow), or open the <b>⋮</b> menu &rarr; <b>Install StepSheet…</b> (Edge: <b>Apps &rarr; Install this site as an app</b>).</li>
+       <li><b>Chrome / Edge (Android):</b> <b>⋮</b> menu &rarr; <b>Add to Home screen</b> or <b>Install app</b>.</li>
+       <li><b>Firefox:</b> desktop Firefox can't install web apps; on Android use <b>⋮</b> &rarr; <b>Add to Home screen</b>.</li>
+     </ul>
+     <p class="hint">If you don't see an install option at all, make sure you're on the https&#58;//…github.io link, not a downloaded file.</p>`)+
+    `<div class="acts"><button class="lbtn primary" data-x>Got it</button></div>`,
+  (d,close)=>{ d.querySelector("[data-x]").onclick=close; });
+}
 render();
 restoreDraft();
+setupInstall();
 </script>
 </body></html>
