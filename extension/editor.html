@@ -170,10 +170,9 @@ h3{margin:2px 0 10px;font-size:14px}
   .mobbar button:disabled{opacity:.35}
   input,select,textarea,.f,.s,textarea.cap{font-size:16px!important}
   select.s,input.f{min-height:40px}
-  .scard{grid-template-columns:44px minmax(0,1fr) 34px;gap:10px;padding:10px}
-  .scard .thumb{grid-column:2;width:100%;height:auto;aspect-ratio:16/10;max-height:260px}
+  .scard{grid-template-columns:44px minmax(0,1fr);gap:10px;padding:10px}
+  .scard .thumb{width:100%;height:auto;aspect-ratio:16/10;max-height:260px}
   .scard .sbody{grid-column:1/-1}
-  .scard .kebab{grid-column:3;grid-row:1}
   .scard textarea.cap{min-height:84px}
   select.pill,.tog{min-height:36px;font-size:14px!important}
   .tabs{padding-top:8px;padding-bottom:8px} .tabs .tab-set{margin-left:auto}
@@ -230,7 +229,7 @@ h3{margin:2px 0 10px;font-size:14px}
 @media (pointer:coarse){ .tabs .tab-adv,.tb .adv{display:none} .tb .sep{display:none} }
 /* ---- Steps as cards ---- */
 .cards{display:grid;gap:10px}
-.scard{display:grid;grid-template-columns:48px 190px minmax(0,1fr) 34px;gap:14px;align-items:start;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.scard{display:grid;grid-template-columns:48px 190px minmax(0,1fr);gap:14px;align-items:start;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 .scard.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--sel)}
 .scard.dragover{box-shadow:0 -3px 0 0 var(--accent)}
 .scard.dragover.below{box-shadow:0 3px 0 0 var(--accent)}
@@ -255,8 +254,14 @@ select.pill{border:1px solid var(--edge);border-radius:999px;background:var(--pa
 .tog:has(input:disabled){opacity:.7;cursor:default}
 .tog:has(input:focus-visible){outline:2px solid var(--focus);outline-offset:2px}
 .imgname{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px}
-.kebab{border:none;background:none;width:34px;height:34px;border-radius:7px;color:var(--muted);font-size:18px;line-height:1;cursor:pointer}
-.kebab:hover,.kebab[aria-expanded="true"]{background:var(--sel);color:var(--ink)}
+.stepbar{position:sticky;top:0;z-index:5;display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:8px 0 10px;background:var(--bg)}
+.stepbar .lbtn{background:var(--panel)} .stepbar .lbtn.primary{background:var(--accent)}
+.stepbar .lbtn:disabled{opacity:.45;cursor:default}
+.sbsep{width:1px;height:22px;background:var(--line);margin:0 4px}
+.sbinfo{font-weight:600;color:var(--ink);margin-right:2px;font-variant-numeric:tabular-nums}
+.sbtip{margin-left:auto}
+@media (pointer:coarse){ .sbtip{display:none} }
+@media (max-width:760px){ .stepbar{display:none} }   /* phones use the bottom bar instead */
 .addcard{border:1.5px dashed var(--edge);border-radius:10px;padding:12px;text-align:center;color:var(--accent);font-weight:600;background:var(--panel2);cursor:pointer;width:100%;font-size:14px}
 .addcard:hover{background:var(--sel)}
 @media (pointer:coarse){ .handle{display:none} }
@@ -305,13 +310,15 @@ select.pill{border:1px solid var(--edge);border-radius:999px;background:var(--pa
     <div class="file" id="fname"></div>
   </div>
   <div class="tb" id="tb" role="toolbar" aria-label="StepSheet">
-    <button class="btn" data-menu="file" aria-haspopup="menu" aria-expanded="false">File ▾</button>
-    <button class="btn" data-menu="step" aria-haspopup="menu" aria-expanded="false">Step ▾</button>
+    <button class="btn" data-act="new">New</button>
+    <button class="btn" data-act="open" title="Ctrl+O">Open…</button>
+    <button class="btn" data-act="save" title="Ctrl+S">Save</button>
+    <button class="btn adv" data-act="saveas" title="Ctrl+Shift+S">Save As…</button>
+    <span class="sep"></span>
     <button class="btn adv" data-act="copilot" aria-haspopup="menu" aria-expanded="false" title="Copy, paste or reformat steps with Copilot">Copilot ▾</button>
     <button class="btn" data-act="ppe" title="Build a Required PPE image from tiles">🦺 PPE</button>
     <button class="btn adv" data-act="install" id="installBtn" title="Install StepSheet as an app" hidden>⤓ Install app</button>
     <span class="sep"></span>
-    <button class="btn rowtool" data-act="add">+ Step</button>
     <button class="btn primary" data-menu="pdf" aria-haspopup="menu" aria-expanded="false"><span class="lbl-full">Create PDF ▾</span><span class="lbl-short">PDF ▾</span></button>
   </div>
 </header>

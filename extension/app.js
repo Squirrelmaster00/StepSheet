@@ -559,20 +559,12 @@ function openMenu(btn,items,align){
 document.addEventListener("pointerdown",e=>{ if(!e.target.closest(".menu")&&!e.target.closest('[aria-haspopup="menu"]')) closeMenus(false); });
 window.addEventListener("resize",()=>closeMenus(false));
 const touch=()=>coarsePointer();
-function toolbarMenu(btn){ const k=btn.dataset.menu, one=sel.size===1, i=sorted()[0]??0, n=D.tasks.length;
+function toolbarMenu(btn){ const k=btn.dataset.menu;
   const items={
-    file:[{label:"New",run:()=>act("new")},{label:"Open…",hint:"Ctrl+O",run:()=>act("open")},{label:"Save",hint:"Ctrl+S",run:()=>act("save")},
-      touch()?null:{label:"Save As…",hint:"Ctrl+Shift+S",run:()=>act("saveas")},"-",{label:"Back up photos (.zip)",run:()=>act("backupimg")}],
-    step:[{label:"Add step",run:()=>act("add")},{label:"Insert step above",disabled:!n,run:()=>act("insert")},{label:sel.size>1?`Duplicate ${sel.size} steps`:"Duplicate step",disabled:!n,run:()=>act("dup")},
-      {label:"Move up",disabled:!n||i<=0,run:()=>act("up")},{label:"Move down",disabled:!n||sorted()[sel.size-1]>=n-1,run:()=>act("down")},"-",
-      {label:sel.size>1?`Delete ${sel.size} steps`:"Delete step",danger:true,disabled:!n,run:()=>act("del")}],
     pdf:[{label:"Instructions PDF",run:()=>act("pdf")},touch()?null:{label:"Spanish PDF",run:()=>act("pdfes")},touch()?null:{label:"Analysis PDF",hint:"times, value, wastes",run:()=>act("soe")},"-",
       touch()?null:{label:"Export steps to Excel (.csv)",run:()=>act("csv")},{label:"Back up photos (.zip)",run:()=>act("backupimg")}]
   }[k];
   openMenu(btn,items,k==="pdf"?"right":"left"); }
-function stepMenu(btn){ const i=+btn.dataset.stepmenu, n=D.tasks.length; sel=new Set([i]); lastClick=i; markSel();
-  openMenu(btn,[{label:"Move up",disabled:i<=0,run:()=>act("up")},{label:"Move down",disabled:i>=n-1,run:()=>act("down")},"-",
-    {label:"Insert step above",run:()=>act("insert")},{label:"Duplicate step",run:()=>act("dup")},"-",{label:"Delete step",danger:true,run:()=>act("del")}],"right"); }
 function wasteMenu(btn){ const i=+btn.dataset.wastemenu, t=D.tasks[i];
   openMenu(btn,WASTES.map(w=>({label:WASTE_NAMES[w],checked:!!t.wastes[w],run:()=>{ t.wastes[w]=!t.wastes[w]; changed(true); setTimeout(()=>{ const b=$(`[data-wastemenu="${i}"]`); b&&b.focus(); },0); }})),"left"); }
 function copilotMenu(btn){
@@ -677,14 +669,26 @@ function render(){
   document.querySelectorAll(".mobbar .rowtool").forEach(b=>b.disabled=tab!=="vi");
   closeMenus(false);
   const sc=$("#main").scrollTop; $("#main").innerHTML={vi:renderVI,an:renderAn,opt:renderOpt,review:renderReview,es:renderEs}[tab](); $("#main").scrollTop=sc; renderHeader(); }
-function markSel(){ document.querySelectorAll("[data-row]").forEach(r=>r.classList.toggle("sel",sel.has(+r.dataset.row))); renderHeader(); }
+function markSel(){ document.querySelectorAll("[data-row]").forEach(r=>r.classList.toggle("sel",sel.has(+r.dataset.row))); const b=$("#stepbar"); if(b) b.outerHTML=stepBar(); renderHeader(); }
+/* Step tools sit right above the cards and act on the selected step(s): one click, no menus. */
+function stepBar(){ const n=D.tasks.length, ix=sorted(), k=ix.length, first=ix[0]??0, last=ix[k-1]??0;
+  const what=k>1?`${k} steps`:`step ${first+1}`;
+  return `<div class="stepbar" id="stepbar" role="toolbar" aria-label="Step tools">
+    <button class="lbtn primary" data-act="add">＋ Add step</button>
+    <span class="sbsep" aria-hidden="true"></span><span class="sbinfo">${k>1?`${k} steps selected`:`Step ${first+1}`}</span>
+    <button class="lbtn" data-act="insert" aria-label="Insert a step above ${what}">Insert above</button>
+    <button class="lbtn" data-act="dup" aria-label="Duplicate ${what}">Duplicate</button>
+    <button class="lbtn" data-act="up" aria-label="Move ${what} up" ${first<=0?"disabled":""}>▲ Up</button>
+    <button class="lbtn" data-act="down" aria-label="Move ${what} down" ${last>=n-1?"disabled":""}>▼ Down</button>
+    <button class="lbtn danger" data-act="del" aria-label="Delete ${what}">Delete</button>
+    <span class="hint sbtip">Tip: Tab in a task box goes to the next step</span></div>`; }
 const rowA=i=>`data-row="${i}" class="${sel.has(i)?"sel":""}"`;
 const numCell=i=>`<td class="num" data-sel="${i}" title="Click to select. Ctrl or Shift for several."><span class="stepno">Step </span>${i+1}</td>`;
 const typeDot=k=>{ const c=hexRGB(color(k)); return `rgb(${(isLight(c)?darker(c):c).map(v=>Math.round(v*255)).join(",")})`; };
 function renderVI(){
   if(!D.tasks.length) return `<div class="panel"><div class="empty"><div>No steps yet.</div><div class="row"><button class="lbtn primary" data-act="add">+ Add a step</button><button class="lbtn" data-act="open">Open a .soe file</button></div></div></div>`;
   const opt=(list,v,lab=x=>x)=>list.map(x=>`<option value="${esc(x)}" ${x===v?"selected":""}>${esc(lab(x))}</option>`).join("");
-  return `<div class="cards">${D.tasks.map((t,i)=>{ const has=t.image_id&&D.images[t.image_id], qt=t.tasktype==="Quality";
+  return `${stepBar()}<div class="cards">${D.tasks.map((t,i)=>{ const has=t.image_id&&D.images[t.image_id], qt=t.tasktype==="Quality";
     return `<article class="scard ${sel.has(i)?"sel":""}" data-row="${i}" aria-label="Step ${i+1}">
     <div class="snum"><button class="selbtn" data-sel="${i}" aria-label="Select step ${i+1}" title="Select. Ctrl or Shift for several.">${shapeSVG(t.tasktype,i+1,40,isQ(t))}</button><span class="handle" draggable="true" data-drag="${i}" title="Drag to reorder" aria-hidden="true">⋮⋮</span></div>
     <div class="thumb ${has?"has":""}" data-img="${i}" tabindex="0" role="button" aria-label="${has?"Change":"Add"} picture for step ${i+1}" title="Click, drop or paste a picture">${has?`<img src="${imgURL(t.image_id)}" alt=""><button class="x" data-rmimg="${i}" aria-label="Remove picture from step ${i+1}">×</button>`:"＋ Add photo"}</div>
@@ -696,7 +700,6 @@ function renderVI(){
         <label class="pill-lbl">Text <select class="pill" id="fs${i}" data-f="font_size" data-i="${i}" aria-label="Text size for step ${i+1}">${[8,9,10,11,12,13,14].map(x=>`<option value="${x}" ${String(x)===String(t.font_size)?"selected":""}>${x} pt</option>`).join("")}</select></label>
         ${t.image_title?`<span class="imgname" title="${esc(t.image_path||t.image_title)}">${esc(t.image_title)}</span>`:""}
       </div></div>
-    <button class="kebab" data-stepmenu="${i}" aria-haspopup="menu" aria-expanded="false" aria-label="Step ${i+1} actions" title="Move, insert, duplicate or delete">⋯</button>
   </article>`; }).join("")}<button class="addcard rowtool" data-act="add">＋ Add step</button></div>`; }
 /* ---- Analysis: cycle time, value, activity and wastes on one screen ---- */
 function anTotals(){ let tot=0,va=0,tq=0; D.tasks.forEach(t=>{ const c=num(t.cycletime); tot+=c; if(t.value_added) va+=c; else if(t.tqc) tq+=c; }); return {tot,va,tq,nva:tot-va-tq}; }
@@ -843,7 +846,6 @@ function renderOpt(){ const d=D;
 /* ===================================================================== events */
 document.addEventListener("click",e=>{
   const mb=e.target.closest("[data-menu]"); if(mb){ toolbarMenu(mb); return; }
-  const sm=e.target.closest("[data-stepmenu]"); if(sm){ stepMenu(sm); return; }
   const wm=e.target.closest("[data-wastemenu]"); if(wm){ wasteMenu(wm); return; }
   const uw=e.target.closest("[data-unwaste]"); if(uw){ const i=+uw.dataset.unwaste; D.tasks[i].wastes[uw.dataset.w]=false; changed(true); setTimeout(()=>{ const b=$(`[data-wastemenu="${i}"]`); b&&b.focus(); },0); return; }
   const n=e.target.closest("[data-sel]");
