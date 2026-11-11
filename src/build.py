@@ -21,14 +21,14 @@ ROOT = os.path.dirname(HERE)                         # repo root
 def R(*p): return os.path.join(ROOT, *p)
 def S(*p): return os.path.join(HERE, *p)
 
-CACHE = "stepsheet-v28"   # bump when the app code changes so installed PWAs refresh
+CACHE = "stepsheet-v29"   # bump when the app code changes so installed PWAs refresh
 
 widths = open(S("widths.json"), encoding="utf-8").read().strip()
 block = open(S("header-block.html"), encoding="utf-8").read().rstrip("\n")
 # Browser-tab icon, embedded so even the single-file copy carries it (made by src/icon/make_icons.js).
 from urllib.parse import quote
 FAVICON = '<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,' + quote(open(S("icon", "favicon.svg"), encoding="utf-8").read()) + '">'
-src = open(S("src.html"), encoding="utf-8").read().replace("__WIDTHS__", widths)
+src = open(S("src.html"), encoding="utf-8").read().replace("__WIDTHS__", widths).replace("__BUILD__", CACHE.split("-v")[-1])
 
 
 def with_block(html):
