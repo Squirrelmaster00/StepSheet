@@ -46,7 +46,7 @@ function bytesToB64(bytes){ let s=""; const CH=0x8000; for(let i=0;i<bytes.lengt
 function latin1(str){ const a=new Uint8Array(str.length); for(let i=0;i<str.length;i++){ const c=str.charCodeAt(i); a[i]=c<256?c:63; } return a; }
 
 /* ===================================================================== document model */
-function blankTask(ppp){ return {caption:"",caption_es:"",caption_es_src:"",tasktype:"Work Content",quality:false,pics_per_page:ppp||"4 Picture Landscape",cycletime:"",image_id:"",image_title:"",image_path:"",font_size:"12",
+function blankTask(ppp){ return {caption:"",caption_es:"",caption_es_src:"",code:"",tasktype:"Work Content",quality:false,pics_per_page:ppp||"4 Picture Landscape",cycletime:"",image_id:"",image_title:"",image_path:"",font_size:"12",
   wastes:Object.fromEntries(WASTES.map(w=>[w,false])),setup:{selected:false,machine:false,labor:false},work:{selected:true,machine:false,labor:false},value_added:false,non_value_added:true,tqc:false}; }
 function blankDoc(){ const d={name:"untitled.soe",url:"",version:"4.0",header:Object.fromEntries(Object.keys(HEADER_LABELS).map(k=>[k,""])),advanced:true,borders:true,shapes:true,template:"Standard",soe_title:true,
   encrypt:false,password:"",security:Object.fromEntries(SECURITY_FLAGS.map(k=>[k,""])),header_es:Object.fromEntries(Object.keys(HEADER_LABELS).map(k=>[k,""])),font:"helvetica",default_ppp:"4 Picture Landscape",logo_path:"",logo_id:"",tasks:[],images:{}};
@@ -84,7 +84,7 @@ function parseSoe(text){
       image_id:g(t,"VmsInfo/imageid"),image_title:g(t,"VmsInfo/imagetitle"),image_path:g(t,"VmsInfo/imagepath"),font_size:g(t,"VmsInfo/FontSize","12")});
     task.quality=isT(g(t,"quality","false")); const ct=g(t,"customtype").trim(); if(CUSTOM_TYPES[ct]) task.tasktype=ct;
     if(!TASK_TYPES.includes(task.tasktype)) task.tasktype="Work Content";
-    task.caption_es=g(t,"caption_es"); task.caption_es_src=g(t,"caption_es_src");
+    task.caption_es=g(t,"caption_es"); task.caption_es_src=g(t,"caption_es_src"); task.code=g(t,"code");
     if(a){ task.wastes=Object.fromEntries(WASTES.map(w=>[w,isT(g(a,"Muda/"+w,"false"))]));
       for(const grp of ["Setup","Work"]) task[grp.toLowerCase()]=Object.fromEntries(["selected","machine","labor"].map(k=>[k,isT(g(a,grp+"/"+k,"false"))]));
       task.value_added=isT(g(a,"ValueAdded","false")); task.non_value_added=isT(g(a,"NonValueAdded","false")); task.tqc=isT(g(a,"TQC","false")); }
@@ -111,7 +111,7 @@ function serializeSoe(d){
     o.push("</Setup><Work>"); for(const k of ["selected","machine","labor"]) o.push(ck(k,b(t.work[k])));
     o.push("</Work>",ck("ValueAdded",b(t.value_added)),ck("NonValueAdded",b(t.non_value_added)),ck("TQC",b(t.tqc)),"</Analysis>",
       cd("cycletime",t.cycletime),ck("tasktype",CUSTOM_TYPES[t.tasktype]||t.tasktype),ck("PicsPerPage",t.pics_per_page),ck("caption",t.caption),
-      CUSTOM_TYPES[t.tasktype]?ck("customtype",t.tasktype):"",isQ(t)?ck("quality","true"):"",(t.caption_es||"").trim()?ck("caption_es",t.caption_es)+ck("caption_es_src",t.caption_es_src||""):"","</Task>");
+      CUSTOM_TYPES[t.tasktype]?ck("customtype",t.tasktype):"",isQ(t)?ck("quality","true"):"",(t.caption_es||"").trim()?ck("caption_es",t.caption_es)+ck("caption_es_src",t.caption_es_src||""):"",(t.code||"").trim()?ck("code",t.code.trim()):"","</Task>");
   }
   o.push("</FileData></mainroot><imageroot><images>");
   const used=new Set(d.tasks.map(t=>t.image_id).filter(Boolean)); if(d.logo_id) used.add(d.logo_id);
@@ -298,6 +298,10 @@ async function buildInstructions(d,pdfName,progress,lang){
       while(true){ lines=split(capText,"reg",fsz,capW); if(lines.length*fsz*1.02<=topH-2||fsz<=5) break; fsz-=0.5; }
       P.fill(BLACK); let yy=iy+ih-fsz*.95; for(const ln of lines){ P.text(ix+shapeW+4,yy,ln,"reg",fsz); yy-=fsz*1.02; }
       if((t.cycletime||"").trim()) P.text(ix+iw-sideW/2,iy+ih-topH/2+topH/4-2.5,t.cycletime.trim(),"reg",7,"center");
+      const rc=(t.code||"").trim();   // USCG / ABYC reference, in the lower half of the corner box
+      if(rc){ const bw=sideW-3, bh=topH/2-2; let fs=7, L;
+        while(true){ L=split(rc,"reg",fs,bw); if((L.length*fs*1.05<=bh && L.every(l=>tw(l,"reg",fs)<=bw)) || fs<=4.5) break; fs-=0.5; }
+        let cy=iy+ih-topH*.75+(L.length-1)*fs*.525-fs*.35; for(const l of L){ P.text(ix+iw-sideW/2,cy,l,"reg",fs,"center"); cy-=fs*1.05; } }
       const img=await pdfImage(t.image_id);
       if(img){ const ax=ix+2, ay=iy+2, aw=iw-4, ah=ih-topH-4, s=Math.min(aw/img.w,ah/img.h); P.image(img,ax+(aw-img.w*s)/2,ay+(ah-img.h*s)/2,img.w*s,img.h*s); }
       progress&&progress(++done,d.tasks.length);
@@ -500,8 +504,8 @@ function parseSteps(text){ const steps=[], loose=[]; let title="", numbered=fals
   if(!steps.length) for(const l of loose){ const {type,quality,body}=takeTag(l.replace(/^[-*•]\s+/,"").replace(/\*\*/g,"")); if(body.trim()) steps.push({type,quality,caption:body.trim()}); }
   return {title,steps}; }
 function csvText(){ const q=v=>{ v=String(v??""); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
-  const head=["Step","Type","Task","Spanish","Cycle Time","Value",...WASTES.map(w=>WASTE_NAMES[w]),"Picture"];
-  const rows=D.tasks.map((t,i)=>[i+1,typeTag(t),t.caption,t.caption_es||"",t.cycletime,VALUE_NAMES[valueClass(t)],...WASTES.map(w=>t.wastes[w]?"Yes":""),t.image_title]);
+  const head=["Step","Type","Task","Spanish","Cycle Time","Code","Value",...WASTES.map(w=>WASTE_NAMES[w]),"Picture"];
+  const rows=D.tasks.map((t,i)=>[i+1,typeTag(t),t.caption,t.caption_es||"",t.cycletime,t.code||"",VALUE_NAMES[valueClass(t)],...WASTES.map(w=>t.wastes[w]?"Yes":""),t.image_title]);
   return "\uFEFF"+[head,...rows].map(r=>r.map(q).join(",")).join("\r\n"); }
 function reviewText(){ const h=D.header, T=D.tasks, L=[];
   L.push("Please review these visual work instructions. Point out missing safety, check or verify steps, unclear or ambiguous wording, steps in the wrong order, and steps that combine two actions. Keep my format when you suggest rewrites: one numbered step per line starting with [Work Content], [Check], [Verify], [Safety] or [Quality], part names and tools in CAPS.","");
@@ -650,7 +654,7 @@ function reviewPaste(r){
       const on=new Set([...d.querySelectorAll("[data-c]:checked")].map(c=>+c.dataset.c)), seen=new Set(), next=[];
       rows.forEach(w=>{ w.si.forEach(j=>seen.add(j));
         if(on.has(w.i)){ const t=blankTask(D.default_ppp); t.caption=w.s.caption; t.tasktype=w.s.type; t.quality=w.s.type!=="Quality"&&(!!w.s.quality||w.si.some(j=>isQ(old[j]))); const o=w.si.length?old[w.si[0]]:null;
-          if(o){ t.image_id=o.image_id; t.image_title=o.image_title; t.image_path=o.image_path; t.pics_per_page=o.pics_per_page; t.font_size=o.font_size; if(w.si.length<=1) t.cycletime=o.cycletime; } next.push(t); }
+          if(o){ t.image_id=o.image_id; t.image_title=o.image_title; t.image_path=o.image_path; t.pics_per_page=o.pics_per_page; t.font_size=o.font_size; if(w.si.length<=1) t.cycletime=o.cycletime; t.code=[...new Set(w.si.map(j=>(old[j].code||"").trim()).filter(Boolean))].join(", "); } next.push(t); }
         else w.si.forEach(j=>next.push(old[j])); });
       old.forEach((o,j)=>{ if(!seen.has(j)) next.push(o); });  // never silently drop an original
       D.tasks=next.length?next:old; close(); changed(true); toast(`Applied ${on.size} of ${r.steps.length} changes`); };
@@ -721,6 +725,7 @@ function renderVI(){
         <label class="tog q" title="${qt?"This step is already a Quality step.":"Also integral to quality. It prints inside a Quality octagon."}"><input type="checkbox" data-q="${i}" ${t.quality||qt?"checked":""} ${qt?"disabled":""}> Integral to quality</label>
         <select class="pill" id="pp${i}" data-f="pics_per_page" data-i="${i}" aria-label="Page layout for step ${i+1}" title="Page layout in the PDF">${opt(PAGE_TYPES,t.pics_per_page,pageLabel)}</select>
         <label class="pill-lbl"><span class="tl">Text</span> <select class="pill" id="fs${i}" data-f="font_size" data-i="${i}" aria-label="Text size for step ${i+1}">${[8,9,10,11,12,13,14].map(x=>`<option value="${x}" ${String(x)===String(t.font_size)?"selected":""}>${x} pt</option>`).join("")}</select></label>
+        <label class="pill-lbl code-lbl"><span class="tl">Code</span> <input class="pill code" id="rc${i}" data-f="code" data-i="${i}" value="${esc(t.code||"")}" maxlength="40" spellcheck="false" autocomplete="off" placeholder="USCG / ABYC" aria-label="USCG or ABYC code for step ${i+1}" title="Coast Guard or ABYC reference. It prints in the corner box under the cycle time."></label>
         ${t.image_title?`<span class="imgname" title="${esc(t.image_path||t.image_title)}">${esc(t.image_title)}</span>`:""}
       </div></div>
   </article>`; }).join("")}<button class="addcard rowtool" data-act="add">＋ Add step</button></div>`; }
@@ -865,7 +870,7 @@ function renderOpt(){ const d=D;
     ${Object.entries(flags).map(([k,l])=>`<label class="chk"><input type="checkbox" id="sec_${k}" data-sec="${k}" ${isT(d.security[k])?"checked":""}> Allow ${l}</label>`).join("")}</div>
   <div class="card"><h3>Colors</h3>${["Check","Work Content","Verify","Safety","Quality","Border"].map(k=>`<div class="fr"><label for="c_${k.replace(/ /g,"")}">${k}</label><div style="display:flex;gap:8px;align-items:center">${k!=="Border"?shapeSVG(k,null,22):""}<input type="color" id="c_${k.replace(/ /g,"")}" data-color="${k}" value="${color(k).toLowerCase()}"></div></div>`).join("")}
     <button class="lbtn" data-act="resetcolors">Reset colors</button></div></div>
-    <p class="hint" style="margin-top:12px">StepSheet build 34${"launchQueue" in window?" · can open .soe files from Windows":""}<br>
+    <p class="hint" style="margin-top:12px">StepSheet build 35${"launchQueue" in window?" · can open .soe files from Windows":""}<br>
       Last start: ${!("launchQueue" in window)?"this browser can't open files from Windows":!lastLaunch?"normal (the browser didn't start it as an app)":lastLaunch.files?`from a file (${esc(lastLaunch.names)})`:"as an app, but the browser passed no file"}</p>`; }
 
 /* ===================================================================== events */

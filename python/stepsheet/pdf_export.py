@@ -376,6 +376,20 @@ def build_instructions_pdf(doc: Document, out, palette=None, quality="Medium",
             if t.cycletime.strip():
                 c.setFont(reg, 7)
                 c.drawCentredString(ix + iw_ - side_w / 2, iy + ih_ - top_h / 2 + top_h / 4 - 2.5, t.cycletime.strip())
+            rc = (getattr(t, "code", "") or "").strip()   # USCG / ABYC reference, lower half of the corner box
+            if rc:
+                from reportlab.lib.utils import simpleSplit
+                bw, bh, fs = side_w - 3, top_h / 2 - 2, 7.0
+                while True:
+                    L = simpleSplit(rc, reg, fs, bw)
+                    if (len(L) * fs * 1.05 <= bh and all(c.stringWidth(x, reg, fs) <= bw for x in L)) or fs <= 4.5:
+                        break
+                    fs -= 0.5
+                c.setFont(reg, fs)
+                cy = iy + ih_ - top_h * 0.75 + (len(L) - 1) * fs * 0.525 - fs * 0.35
+                for x in L:
+                    c.drawCentredString(ix + iw_ - side_w / 2, cy, x)
+                    cy -= fs * 1.05
 
             # picture
             img = imgs.get(t.image_id)

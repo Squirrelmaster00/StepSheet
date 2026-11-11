@@ -77,6 +77,7 @@ class Task:
     font_size: str = "12"
     caption_es: str = ""
     caption_es_src: str = ""
+    code: str = ""          # USCG / ABYC reference
     quality: bool = False   # quality-critical flag on top of the step type
     wastes: dict = field(default_factory=lambda: {w: False for w in WASTES})
     setup: dict = field(default_factory=lambda: {"selected": False, "machine": False, "labor": False})
@@ -159,6 +160,7 @@ class Document:
                 font_size=t.findtext("VmsInfo/FontSize", "12"),
                 caption_es=t.findtext("caption_es", ""),
                 caption_es_src=t.findtext("caption_es_src", ""),
+                code=t.findtext("code", "") or "",
             )
             task.quality = (t.findtext("quality", "") or "").strip().lower() == "true"
             ct = (t.findtext("customtype", "") or "").strip()
@@ -238,6 +240,8 @@ class Document:
                 o.append(cd_keep("quality", "true"))
             if (t.caption_es or "").strip():
                 o.append(cd_keep("caption_es", t.caption_es) + cd_keep("caption_es_src", t.caption_es_src))
+            if (t.code or "").strip():
+                o.append(cd_keep("code", t.code.strip()))
             o.append("</Task>")
         o.append("</FileData></mainroot><imageroot><images>")
         used = self.used_image_ids()
