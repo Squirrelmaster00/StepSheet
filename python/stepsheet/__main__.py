@@ -17,6 +17,23 @@ import os
 import sys
 
 
+
+def pdf_file_name(doc, src, soe=False, lang="en"):
+    """Same naming as the app: document number (header row 2, box 2) then the title,
+    e.g. "OPS-SOP-000123 RAIL INSTALL.pdf"; Spanish uses the Spanish title + "(Español)"."""
+    import re
+    def clean(x):
+        x = re.sub(r"[\\/]+", "-", x or "")
+        return re.sub(r"\s+", " ", re.sub(r'[:*?"<>|\x00-\x1f]+', "", x)).strip()
+    h = doc.header or {}
+    raw = (h.get("udc4") or "").strip()
+    m = re.search(r"\b[A-Z]{2,}(?:-[A-Z]{2,})*-\d[\w-]*", raw, re.I)
+    num = clean(m.group(0) if m else (raw if len(raw) <= 40 else ""))
+    title = clean(((doc.header_es or {}).get("udc1") or h.get("udc1")) if lang == "es" else h.get("udc1"))
+    base = " ".join(x for x in (num, title) if x) or os.path.splitext(os.path.basename(src))[0]
+    base = base[:150].strip()
+    return base + (" Analysis.pdf" if soe else " (Español).pdf" if lang == "es" else ".pdf")
+
 def _convert(args: list[str]) -> int:
     from . import pdf_export
     from .soe import Document
@@ -45,9 +62,8 @@ def _convert(args: list[str]) -> int:
     src = pos[0]
     if not os.path.isfile(src):
         print(f"File not found: {src}"); return 1
-    out = pos[1] if len(pos) > 1 else os.path.splitext(src)[0] + (" SOE.pdf" if soe else ".pdf")
-
     doc = Document.load(src)
+    out = pos[1] if len(pos) > 1 else os.path.join(os.path.dirname(src) or ".", pdf_file_name(doc, src, soe, lang))
     name = os.path.basename(out)
     if soe:
         pdf_export.build_soe_pdf(doc, out, pdf_name=name)
