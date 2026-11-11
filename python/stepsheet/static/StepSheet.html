@@ -1462,7 +1462,17 @@ function pwaInstall(){
   (d,close)=>{ d.querySelector("[data-x]").onclick=close; });
 }
 render();
-restoreDraft();
+const draftReady=restoreDraft();
+/* "Open with > StepSheet" from Windows Explorer (installed app in Edge or Chrome).
+   The manifest registers .soe; the browser hands the chosen file over here.
+   Save writes back to that same file (the browser asks once for permission). */
+if("launchQueue" in window) window.launchQueue.setConsumer(async params=>{
+  const h=params&&params.files&&params.files[0]; if(!h||(h.kind&&h.kind!=="file")) return;
+  await draftReady.catch(()=>{});
+  if(!(await confirmDiscard())) return;
+  try{ const f=await h.getFile(); loadDoc(await readSoeFile(f),h); toast("Opened "+f.name); }
+  catch(e){ toast("Couldn't open that file: "+e.message,10000); }
+});
 setupInstall();
 </script>
 </body></html>

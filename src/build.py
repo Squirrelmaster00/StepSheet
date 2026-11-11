@@ -21,7 +21,7 @@ ROOT = os.path.dirname(HERE)                         # repo root
 def R(*p): return os.path.join(ROOT, *p)
 def S(*p): return os.path.join(HERE, *p)
 
-CACHE = "stepsheet-v27"   # bump when the app code changes so installed PWAs refresh
+CACHE = "stepsheet-v28"   # bump when the app code changes so installed PWAs refresh
 
 widths = open(S("widths.json"), encoding="utf-8").read().strip()
 block = open(S("header-block.html"), encoding="utf-8").read().rstrip("\n")
@@ -97,6 +97,11 @@ open(R("manifest.webmanifest"), "w", encoding="utf-8").write('''{
   "orientation": "any",
   "background_color": "#eef0f3",
   "theme_color": "#232d3b",
+  "file_handlers": [
+    { "action": "./", "accept": { "application/x-stepsheet-soe": [".soe"] },
+      "icons": [ { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" } ] }
+  ],
+  "launch_handler": { "client_mode": "auto" },
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },

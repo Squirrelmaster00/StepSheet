@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "StepSheet",
-  "version": "1.54.0",
+  "version": "1.55.0",
   "description": "Edit .soe work instructions and make step-by-step PDFs in English and Spanish. Works offline; files stay on your computer.",
   "action": {
     "default_title": "Open StepSheet",
