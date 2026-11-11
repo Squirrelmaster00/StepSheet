@@ -415,11 +415,11 @@ async function doSave(as){
   toast(r.zipped?`Saved ${r.name}. Unzip it to get the .soe file.`:r.download?`Saved ${r.name} to your Downloads folder`:"Saved "+r.name,5000);
 }
 function afterSave(name){ if(name && /\.soe$/i.test(name)) D.name=name; dirty=false; scheduleDraft(); if(ST.remember_header){ ST.saved_header={...D.header}; saveSettings(); } renderHeader(); }
-/* PDF file name: document number (header row 2, box 2) then the title, e.g. "OPS-SOP-000123 RAIL INSTALL.pdf".
+/* PDF file name: "OPS-SOP-" + the digits in header row 2, box 2, then the title, e.g. "OPS-SOP-000123 RAIL INSTALL.pdf".
    Spanish uses the Spanish title and ends in "(Español)"; falls back to the .soe name when the header is empty. */
 function pdfFileName(d,kind){
   const h=d.header||{}, clean=x=>(x||"").replace(/[\\/]+/g,"-").replace(/[:*?"<>|\u0000-\u001f]+/g,"").replace(/\s+/g," ").trim();
-  const m=/\b[A-Z]{2,}(?:-[A-Z]{2,})*-\d[\w-]*/i.exec(h.udc4||""), num=clean(m?m[0]:(h.udc4||"").trim().length<=40?h.udc4:"");
+  const digits=((h.udc4||"").match(/\d+/g)||[]).sort((a,b)=>b.length-a.length)[0], num=digits?"OPS-SOP-"+digits:"";   // only the number from row 2, box 2
   const title=clean(kind==="es"?((d.header_es||{}).udc1||h.udc1):h.udc1);
   let base=[num,title].filter(Boolean).join(" ")||clean((d.name||"untitled").replace(/\.soe$/i,""));
   base=base.slice(0,150).trim();
