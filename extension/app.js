@@ -481,7 +481,11 @@ window.addEventListener("pagehide",()=>{ if(draftTimer) writeDraft(false); });
 /* ===================================================================== text bridge (Copilot / Excel) */
 function stepsText(){ const h=D.header; const lines=[];
   if(h.udc1) lines.push("Title: "+h.udc1); if(h.udc4) lines.push("Document: "+h.udc4); lines.push("");
-  D.tasks.forEach((t,i)=>lines.push(`${i+1}. [${typeTag(t)}] ${(t.caption||"").replace(/\s*\n\s*/g," ").trim()}`)); return lines.join("\n"); }
+  D.tasks.forEach((t,i)=>lines.push(`${i+1}. [${typeTag(t)}] ${(t.caption||"").replace(/\s*\n\s*/g," ").trim()}${(t.code||"").trim()?" [Code: "+t.code.trim()+"]":""}`)); return lines.join("\n"); }
+// A trailing [Code: ABYC E-11] tag fills the step's USCG / ABYC Code box. code is null when no tag was given.
+function takeCode(body){ let code=null; const re=/\s*[\[(]\s*(?:codes?|ref|standards?)\s*:\s*([^\])]*)[\])]\s*$/i; let m;
+  while((m=body.match(re))){ const v=m[1].replace(/\*\*/g,"").trim(); code=code==null?v:(v?v+(code?", "+code:""):code); body=body.slice(0,m.index); }
+  return {body:body.trim(),code}; }
 function parseSteps(text){ const steps=[], loose=[]; let title="", numbered=false;
   // A leading tag sets the step type: [Check], [Quality]. "+ Quality" after another type flags it quality-critical: [Check + Quality].
   const readTag=raw=>{ const parts=raw.split(/\s*(?:\+|,|&|\/|\band\b)\s*/i).map(x=>x.trim().toLowerCase().replace(/\s+/g," ")).filter(Boolean); if(!parts.length) return null;
@@ -495,22 +499,22 @@ function parseSteps(text){ const steps=[], loose=[]; let title="", numbered=fals
     const tm=s.match(/^title\s*:\s*(.+)$/i); if(tm){ title=tm[1].trim(); continue; }
     if(/^document\s*:/i.test(s)) continue;
     const m=s.match(/^(?:step\s*)?(\d+)\s*[.):\-]\s*(.*)$/i) || s.match(/^[-*]\s+(.*)$/);
-    if(!m){ if(steps.length&&numbered) steps[steps.length-1].caption+=" "+s; else if(!/^```/.test(s)) loose.push(s); continue; }
+    if(!m){ if(steps.length&&numbered){ const L=steps[steps.length-1], kc=takeCode(L.caption+" "+s); L.caption=kc.body; if(kc.code!=null) L.code=L.code?L.code+", "+kc.code:kc.code; } else if(!/^```/.test(s)) loose.push(s); continue; }
     numbered=true;
     let {type,quality,body}=takeTag((m.length===3?m[2]:m[1]).replace(/\*\*|__/g,"").trim());
     let src=null; const sm=body.match(/^\{\s*([\d,\s–\-]+)\}\s*(.*)$/); if(sm){ src=[]; for(const part of sm[1].split(",")){ const rg=part.trim().match(/^(\d+)\s*[–-]\s*(\d+)$/); if(rg){ for(let n=+rg[1];n<=+rg[2];n++) src.push(n); } else if(/^\d+$/.test(part.trim())) src.push(+part.trim()); } body=sm[2].trim(); }
-    body=body.replace(/\*\*/g,"").replace(/\s+\((?:[^()]*(?:no picture|cycle time|wastes:)[^()]*)\)\s*$/i,"").trim(); steps.push({type,quality,caption:body,src}); }
-  if(!steps.length) for(const l of loose){ const {type,quality,body}=takeTag(l.replace(/^[-*•]\s+/,"").replace(/\*\*/g,"")); if(body.trim()) steps.push({type,quality,caption:body.trim()}); }
+    body=body.replace(/\*\*/g,"").replace(/\s+\((?:[^()]*(?:no picture|cycle time|wastes:)[^()]*)\)\s*$/i,"").trim(); const kc=takeCode(body); steps.push({type,quality,caption:kc.body,code:kc.code,src}); }
+  if(!steps.length) for(const l of loose){ const {type,quality,body}=takeTag(l.replace(/^[-*•]\s+/,"").replace(/\*\*/g,"")); const kc=takeCode(body); if(kc.body) steps.push({type,quality,caption:kc.body,code:kc.code}); }
   return {title,steps}; }
 function csvText(){ const q=v=>{ v=String(v??""); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
   const head=["Step","Type","Task","Spanish","Cycle Time","Code","Value",...WASTES.map(w=>WASTE_NAMES[w]),"Picture"];
   const rows=D.tasks.map((t,i)=>[i+1,typeTag(t),t.caption,t.caption_es||"",t.cycletime,t.code||"",VALUE_NAMES[valueClass(t)],...WASTES.map(w=>t.wastes[w]?"Yes":""),t.image_title]);
   return "\uFEFF"+[head,...rows].map(r=>r.map(q).join(",")).join("\r\n"); }
 function reviewText(){ const h=D.header, T=D.tasks, L=[];
-  L.push("Please review these visual work instructions. Point out missing safety, check or verify steps, unclear or ambiguous wording, steps in the wrong order, and steps that combine two actions. Keep my format when you suggest rewrites: one numbered step per line starting with [Work Content], [Check], [Verify], [Safety] or [Quality], part names and tools in CAPS.","");
+  L.push("Please review these visual work instructions. Point out missing safety, check or verify steps, unclear or ambiguous wording, steps in the wrong order, and steps that combine two actions. Keep my format when you suggest rewrites: one numbered step per line starting with [Work Content], [Check], [Verify], [Safety] or [Quality], part names and tools in CAPS. Keep any [Code: ...] tag at the end of a step, and suggest one only where you are sure a specific U.S. Coast Guard regulation (33 CFR) or ABYC standard directly governs the step for a pontoon boat with an outboard motor.","");
   L.push("Title: "+(h.udc1||D.name||"")); for(const k of ["udc2","udc4","udc3","udc5","udc6"]) if((h[k]||"").trim()) L.push(h[k].trim()); L.push("");
   T.forEach((t,i)=>{ const w=WASTES.filter(x=>t.wastes[x]).map(x=>WASTE_NAMES[x]); const ex=[t.cycletime?"cycle time "+t.cycletime:"", w.length?"wastes: "+w.join(", "):"", (!t.image_id||!D.images[t.image_id])?"no picture":""].filter(Boolean);
-    L.push(`${i+1}. [${typeTag(t)}] ${(t.caption||"").replace(/\s*\n\s*/g," ").trim()}${ex.length?"  ("+ex.join("; ")+")":""}`); });
+    L.push(`${i+1}. [${typeTag(t)}] ${(t.caption||"").replace(/\s*\n\s*/g," ").trim()}${(t.code||"").trim()?" [Code: "+t.code.trim()+"]":""}${ex.length?"  ("+ex.join("; ")+")":""}`); });
   return L.join("\n"); }
 const COPILOT_PROMPT=`Write the work instruction steps for: <describe the job>
 
@@ -520,6 +524,7 @@ Format rules:
 - Start each step with its type in brackets: [Work Content], [Check], [Verify], [Safety] or [Quality]. If a step of another type is also critical to quality, add it inside the brackets: [Check + Quality]
 - Keep each step under 20 words. Put part names and tools in CAPS.
 - Start with a [Safety] step for PPE.
+- If a specific U.S. Coast Guard regulation (33 CFR) or ABYC standard directly governs a step, end that step with it in brackets: [Code: ABYC E-11] or [Code: 33 CFR 183.425]. These are pontoon boats with outboard motors, so only cite codes that apply to outboard-powered pontoon boats (not inboard, sterndrive or diesel rules). Only add a code you are sure applies; never guess or invent one. Most steps have no code.
 - First line: Title: <document title>`;
 const VWI_PROMPT=`Reformat these manufacturing work-instruction steps into clean Visual Work Instruction (VWI) steps. Improve HOW each step is written. Do NOT change the process, the order, or any technical detail.
 
@@ -547,6 +552,7 @@ OUTPUT FORMAT:
 - Put the whole answer in one code block so it copies exactly.
 - One step per line, numbered 1. 2. 3., each starting with its type in brackets: [Work Content], [Check], [Verify], [Safety] or [Quality]. Keep each original step's type, and keep any "+ Quality" inside the brackets (for example [Check + Quality]) - a bundled step keeps "+ Quality" if any merged step had it; for a bundled step use [Verify] or [Safety] if any merged action is a check or safety item, otherwise [Work Content].
 - Right after the type, put in braces the ORIGINAL step number(s) this line came from: {2} for one step, {2,3} for a bundled step. StepSheet reads this to keep each step's photo, then removes it. So a line reads: 1. [Work Content] {2,3} Position PORT RAIL on JIG and CLAMP.
+- Keep any [Code: ...] tag at the end of its step; a bundled step keeps every code from the steps it merged, e.g. [Code: ABYC E-11, 33 CFR 183.425]. Add a [Code: ...] to a step only if you are sure a specific U.S. Coast Guard regulation (33 CFR) or ABYC standard directly governs it for a pontoon boat with an outboard motor (not inboard, sterndrive or diesel rules); never guess or invent one.
 - First line: Title: <document title>
 - After the steps, add a section "## What was improved" listing only real wording and bundling changes.`;
 function vwiSourceText(){ const s=stepsText(); return VWI_PROMPT+"\n\n---\nMy current steps to reformat:\n\n"+s; }
@@ -605,7 +611,7 @@ async function copilotDo(k){
 }
 async function exportCsv(){ const base=(D.name||"untitled").replace(/\.soe$/i,""); const r=await saveBlob(base+" steps.csv",new Blob([csvText()],{type:"text/csv"}),[{description:"CSV",accept:{"text/csv":[".csv"]}}]); if(r.status==="saved") toast("Saved "+r.name); }
 function pasteDialog(){
-  modal(`<h2>Paste steps from Copilot</h2><p>Paste a numbered list. A tag in brackets at the start of a step sets its type: <code>[Work Content]</code>, <code>[Check]</code>, <code>[Verify]</code>, <code>[Safety]</code>, <code>[Quality]</code>. Add <code>+ Quality</code> to another type to mark it quality-critical, e.g. <code>[Check + Quality]</code>. A <code>Title:</code> line sets the header title.</p>
+  modal(`<h2>Paste steps from Copilot</h2><p>Paste a numbered list. A tag in brackets at the start of a step sets its type: <code>[Work Content]</code>, <code>[Check]</code>, <code>[Verify]</code>, <code>[Safety]</code>, <code>[Quality]</code>. Add <code>+ Quality</code> to another type to mark it quality-critical, e.g. <code>[Check + Quality]</code>. A <code>[Code: ABYC E-11]</code> tag at the end of a step fills its USCG / ABYC Code box. A <code>Title:</code> line sets the header title.</p>
     <textarea id="pasteBox" placeholder="Title: Standard Rail Layout&#10;1. [Safety] Wear REQUIRED P.P.E&#10;2. [Work Content] Mark STBD and PORT DOGHOUSE LOCATIONS"></textarea>
     <p class="hint" id="pastePrev">Nothing pasted yet.</p>
     <div class="acts"><button class="lbtn" data-x>Cancel</button><button class="lbtn" data-a="append">Add to bottom</button><button class="lbtn primary" data-a="review">Review &amp; replace…</button></div>`,
@@ -614,7 +620,7 @@ function pasteDialog(){
     d.querySelector("[data-x]").onclick=close;
     d.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{ const r=parseSteps(ta.value); if(!r.steps.length){ toast("No numbered steps found"); return; }
       if(b.dataset.a==="append"){ if(r.title) D.header.udc1=r.title; const start=D.tasks.length===1&&!D.tasks[0].caption&&!D.tasks[0].image_id?0:D.tasks.length; if(start===0) D.tasks=[];
-        r.steps.forEach(s=>{ const t=blankTask(D.default_ppp); t.caption=s.caption; t.tasktype=s.type; t.quality=!!s.quality; D.tasks.push(t); }); close(); changed(true); toast(`Added ${r.steps.length} steps`); }
+        r.steps.forEach(s=>{ const t=blankTask(D.default_ppp); t.caption=s.caption; t.tasktype=s.type; t.quality=!!s.quality; t.code=s.code||""; D.tasks.push(t); }); close(); changed(true); toast(`Added ${r.steps.length} steps`); }
       else { close(); reviewPaste(r); } }); });
 }
 // Review & approve each reformatted step before it replaces the current ones. Maps new->old by the
@@ -627,14 +633,16 @@ function reviewPaste(r){
     const o0=si.length?old[si[0]]:null; const img=(o0&&o0.image_id&&D.images[o0.image_id])?o0.image_id:"";
     const label=si.length>1?`bundles steps ${si.map(j=>j+1).join(", ")}`:(si.length===1?`from step ${si[0]+1}`:"new step");
     const typeChg=(si.length===1&&old[si[0]].tasktype!==s.type)?` · ${esc(old[si[0]].tasktype)} &rarr; ${esc(s.type)}`:"";
-    const changed=now.join(" ")!==(s.caption||"").trim()||!!typeChg||si.length!==1;
-    return {s,si,now,img,label,typeChg,changed,i}; });
+    const codeOld=[...new Set(si.map(j=>(old[j].code||"").trim()).filter(Boolean))].join(", "), codeNew=s.code!=null?s.code:codeOld;
+    const changed=now.join(" ")!==(s.caption||"").trim()||!!typeChg||si.length!==1||codeNew!==codeOld;
+    return {s,si,now,img,label,typeChg,changed,i,codeOld,codeNew}; });
   const html=rows.map(w=>`<div class="revrow">
       <label class="revck"><input type="checkbox" ${w.changed?"checked":""} data-c="${w.i}"> Apply</label>
       <div class="revbody">
         <div class="revmeta">${shapeSVG(w.s.type,null,16,w.s.quality||w.si.some(j=>isQ(old[j])))}<b>New ${w.i+1}</b><span class="hint">${esc(w.label)}${w.typeChg}</span></div>
         ${w.now.length?`<div class="revnow"><span class="rl">Now</span>${esc(w.now.join("   /   "))}</div>`:`<div class="revnow"><span class="rl">Now</span><i class="hint">no original — brand-new step</i></div>`}
         <div class="revnew"><span class="rl">VWI</span>${esc(w.s.caption)}</div>
+        ${w.codeOld||w.codeNew?`<div class="revnow"><span class="rl">Code</span>${w.codeOld===w.codeNew?esc(w.codeNew):`${w.codeOld?`<s>${esc(w.codeOld)}</s> &rarr; `:""}<b>${esc(w.codeNew)||"<i>removed</i>"}</b>`}</div>`:""}
       </div>
       ${w.img?`${imgTag(w.img,"revthumb")}`:`<span class="revthumb nopic">no photo</span>`}
     </div>`).join("");
@@ -653,7 +661,7 @@ function reviewPaste(r){
       const on=new Set([...d.querySelectorAll("[data-c]:checked")].map(c=>+c.dataset.c)), seen=new Set(), next=[];
       rows.forEach(w=>{ w.si.forEach(j=>seen.add(j));
         if(on.has(w.i)){ const t=blankTask(D.default_ppp); t.caption=w.s.caption; t.tasktype=w.s.type; t.quality=w.s.type!=="Quality"&&(!!w.s.quality||w.si.some(j=>isQ(old[j]))); const o=w.si.length?old[w.si[0]]:null;
-          if(o){ t.image_id=o.image_id; t.image_title=o.image_title; t.image_path=o.image_path; t.pics_per_page=o.pics_per_page; t.font_size=o.font_size; if(w.si.length<=1) t.cycletime=o.cycletime; t.code=[...new Set(w.si.map(j=>(old[j].code||"").trim()).filter(Boolean))].join(", "); } next.push(t); }
+          if(o){ t.image_id=o.image_id; t.image_title=o.image_title; t.image_path=o.image_path; t.pics_per_page=o.pics_per_page; t.font_size=o.font_size; if(w.si.length<=1) t.cycletime=o.cycletime; } t.code=w.codeNew; next.push(t); }
         else w.si.forEach(j=>next.push(old[j])); });
       old.forEach((o,j)=>{ if(!seen.has(j)) next.push(o); });  // never silently drop an original
       D.tasks=next.length?next:old; close(); changed(true); toast(`Applied ${on.size} of ${r.steps.length} changes`); };
@@ -869,7 +877,7 @@ function renderOpt(){ const d=D;
     ${Object.entries(flags).map(([k,l])=>`<label class="chk"><input type="checkbox" id="sec_${k}" data-sec="${k}" ${isT(d.security[k])?"checked":""}> Allow ${l}</label>`).join("")}</div>
   <div class="card"><h3>Colors</h3>${["Check","Work Content","Verify","Safety","Quality","Border"].map(k=>`<div class="fr"><label for="c_${k.replace(/ /g,"")}">${k}</label><div style="display:flex;gap:8px;align-items:center">${k!=="Border"?shapeSVG(k,null,22):""}<input type="color" id="c_${k.replace(/ /g,"")}" data-color="${k}" value="${color(k).toLowerCase()}"></div></div>`).join("")}
     <button class="lbtn" data-act="resetcolors">Reset colors</button></div></div>
-    <p class="hint" style="margin-top:12px">StepSheet build 36${"launchQueue" in window?" · can open .soe files from Windows":""}<br>
+    <p class="hint" style="margin-top:12px">StepSheet build 37${"launchQueue" in window?" · can open .soe files from Windows":""}<br>
       Last start: ${!("launchQueue" in window)?"this browser can't open files from Windows":!lastLaunch?"normal (the browser didn't start it as an app)":lastLaunch.files?`from a file (${esc(lastLaunch.names)})`:"as an app, but the browser passed no file"}</p>`; }
 
 /* ===================================================================== events */
