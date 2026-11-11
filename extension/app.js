@@ -602,11 +602,11 @@ function copilotMenu(btn){
   openMenu(btn,[{label:"Copy steps for Copilot",run:()=>copilotDo("copy")},{label:"Paste steps from Copilot…",run:()=>copilotDo("paste")},{label:"Copilot prompt for new steps…",run:()=>copilotDo("prompt")},{label:"Reformat & bundle steps (VWI)…",run:()=>copilotDo("vwi")}],"left"); }
 async function copilotDo(k){
     if(k==="copy"){ const t=stepsText(); if(await copyText(t)) toast("Steps copied. Paste them into Copilot.");
-      else modal(`<h2>Copy steps</h2><p>Select all (Ctrl+A) and copy (Ctrl+C):</p><textarea readonly>${esc(t)}</textarea><div class="acts"><button class="lbtn primary" data-x>Done</button></div>`,(d,c)=>{ d.querySelector("textarea").select(); d.querySelector("[data-x]").onclick=c; }); }
+      else modal(`<h2>Copy steps</h2><p>${coarsePointer()?"Select all the text and tap Copy:":"Select all (Ctrl+A) and copy (Ctrl+C):"}</p><textarea readonly>${esc(t)}</textarea><div class="acts"><button class="lbtn primary" data-x>Done</button></div>`,(d,c)=>{ d.querySelector("textarea").select(); d.querySelector("[data-x]").onclick=c; }); }
     if(k==="prompt") modal(`<h2>Copilot prompt</h2><p>Paste this into Microsoft 365 Copilot, fill in the job, then bring its answer back with <b>Paste steps from Copilot</b>.</p><textarea id="pr">${esc(COPILOT_PROMPT)}</textarea><div class="acts"><button class="lbtn" data-x>Close</button><button class="lbtn primary" data-c>Copy prompt</button></div>`,
-      (d,c)=>{ d.querySelector("[data-x]").onclick=c; d.querySelector("[data-c]").onclick=async()=>{ const ta=d.querySelector("textarea"); if(await copyText(ta.value)) toast("Prompt copied"); else { ta.select(); toast("Press Ctrl+C to copy"); } }; });
+      (d,c)=>{ d.querySelector("[data-x]").onclick=c; d.querySelector("[data-c]").onclick=async()=>{ const ta=d.querySelector("textarea"); if(await copyText(ta.value)) toast("Prompt copied"); else { ta.select(); toast(coarsePointer()?"Text selected. Tap Copy.":"Press Ctrl+C to copy"); } }; });
     if(k==="vwi"){ const t=vwiSourceText(); modal(`<h2>Reformat steps (VWI format)</h2><p>Paste this into Microsoft 365 Copilot. It rewrites your steps to your VWI standard and <b>bundles actions that can share one picture</b> into a single step. Bring the answer back with <b>Paste steps from Copilot</b> &rarr; <b>Review &amp; replace</b>, then accept or skip each step. Photos stay with their step, even where actions were bundled.</p><textarea id="vw">${esc(t)}</textarea><div class="acts"><button class="lbtn" data-x>Close</button><button class="lbtn primary" data-c>Copy</button></div>`,
-      (d,c)=>{ d.querySelector("[data-x]").onclick=c; d.querySelector("[data-c]").onclick=async()=>{ const ta=d.querySelector("textarea"); if(await copyText(ta.value)) toast("Copied. Paste into Copilot."); else { ta.select(); toast("Press Ctrl+C to copy"); } }; }); }
+      (d,c)=>{ d.querySelector("[data-x]").onclick=c; d.querySelector("[data-c]").onclick=async()=>{ const ta=d.querySelector("textarea"); if(await copyText(ta.value)) toast("Copied. Paste into Copilot."); else { ta.select(); toast(coarsePointer()?"Text selected. Tap Copy.":"Press Ctrl+C to copy"); } }; }); }
     if(k==="paste") pasteDialog();
 }
 async function exportCsv(){ const base=(D.name||"untitled").replace(/\.soe$/i,""); const r=await saveBlob(base+" steps.csv",new Blob([csvText()],{type:"text/csv"}),[{description:"CSV",accept:{"text/csv":[".csv"]}}]); if(r.status==="saved") toast("Saved "+r.name); }
@@ -855,6 +855,14 @@ function renderReview(){ const h=D.header, T=D.tasks;
 function renderOpt(){ const d=D;
   const flags={AllowPrinting:"Printing",AllowModifyContent:"Modify Contents",AllowCopy:"Copy",AllowModifyAnnotation:"Modify Annotations",AllowFillIn:"Fill In",AllowScreenReaders:"Screen Readers",AllowAssembly:"Assembly",AllowDegradedPrinting:"Degraded Printing"};
   return `<div class="opts">
+  ${coarsePointer()?`<div class="card copilot-card"><h3>Copilot</h3>
+    <p class="hint">Write or clean up steps with Microsoft 365 Copilot. Copy from here, paste into Copilot, then bring its answer back.</p>
+    <div class="cpgrid">
+      <button class="lbtn" data-cp="copy">Copy steps for Copilot</button>
+      <button class="lbtn primary" data-cp="paste">Paste steps from Copilot…</button>
+      <button class="lbtn" data-cp="prompt">Prompt for new steps…</button>
+      <button class="lbtn" data-cp="vwi">Reformat &amp; bundle steps (VWI)…</button>
+    </div></div>`:""}
   <div class="card"><h3>Header</h3>${Object.entries(HEADER_LABELS).map(([k,l])=>`<div class="fr"><label for="h_${k}">${l}</label><input class="f" id="h_${k}" data-h="${k}" value="${esc(d.header[k])}" placeholder="${esc(HEADER_HINTS[k]||"")}" spellcheck="true"></div>`).join("")}
     <div class="fr"><label>Logo</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${d.logo_id&&d.images[d.logo_id]?`${imgTag(d.logo_id,"logoprev","Logo")}`:'<span class="hint">None</span>'}<button class="lbtn" data-act="logo">Choose…</button>${d.logo_id?'<button class="lbtn danger" data-act="nologo">Remove</button>':""}</div></div>
     <label class="chk"><input type="checkbox" id="o_rem" data-st="remember_header" ${ST.remember_header?"checked":""}> Remember header for new files</label></div>
@@ -877,7 +885,7 @@ function renderOpt(){ const d=D;
     ${Object.entries(flags).map(([k,l])=>`<label class="chk"><input type="checkbox" id="sec_${k}" data-sec="${k}" ${isT(d.security[k])?"checked":""}> Allow ${l}</label>`).join("")}</div>
   <div class="card"><h3>Colors</h3>${["Check","Work Content","Verify","Safety","Quality","Border"].map(k=>`<div class="fr"><label for="c_${k.replace(/ /g,"")}">${k}</label><div style="display:flex;gap:8px;align-items:center">${k!=="Border"?shapeSVG(k,null,22):""}<input type="color" id="c_${k.replace(/ /g,"")}" data-color="${k}" value="${color(k).toLowerCase()}"></div></div>`).join("")}
     <button class="lbtn" data-act="resetcolors">Reset colors</button></div></div>
-    <p class="hint" style="margin-top:12px">StepSheet build 37${"launchQueue" in window?" · can open .soe files from Windows":""}<br>
+    <p class="hint" style="margin-top:12px">StepSheet build 38${"launchQueue" in window?" · can open .soe files from Windows":""}<br>
       Last start: ${!("launchQueue" in window)?"this browser can't open files from Windows":!lastLaunch?"normal (the browser didn't start it as an app)":lastLaunch.files?`from a file (${esc(lastLaunch.names)})`:"as an app, but the browser passed no file"}</p>`; }
 
 /* ===================================================================== events */
@@ -889,6 +897,7 @@ document.addEventListener("click",e=>{
   if(n){ const i=+n.dataset.sel; if(e.shiftKey){ sel=new Set(); for(let k=Math.min(lastClick,i);k<=Math.max(lastClick,i);k++) sel.add(k); } else if(e.ctrlKey||e.metaKey){ sel.has(i)?sel.delete(i):sel.add(i); if(!sel.size) sel.add(i); } else sel=new Set([i]); lastClick=i; markSel(); return; }
   const rm=e.target.closest("[data-rmimg]"); if(rm){ e.stopPropagation(); const t=D.tasks[+rm.dataset.rmimg]; t.image_id=t.image_title=t.image_path=""; changed(true); return; }
   const im=e.target.closest("[data-img]"); if(im){ pickImageFor=+im.dataset.img; $("#imgInput").value=""; $("#imgInput").click(); return; }
+  const cp=e.target.closest("[data-cp]"); if(cp){ copilotDo(cp.dataset.cp); return; }
   const a=e.target.closest("[data-act]"); if(a){ act(a.dataset.act,a); return; }
   const tb=e.target.closest("[data-tab]"); if(tb){ tab=tb.dataset.tab; render(); }
 });
