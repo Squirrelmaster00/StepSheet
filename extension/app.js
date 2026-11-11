@@ -842,7 +842,8 @@ function renderOpt(){ const d=D;
     ${Object.entries(flags).map(([k,l])=>`<label class="chk"><input type="checkbox" id="sec_${k}" data-sec="${k}" ${isT(d.security[k])?"checked":""}> Allow ${l}</label>`).join("")}</div>
   <div class="card"><h3>Colors</h3>${["Check","Work Content","Verify","Safety","Quality","Border"].map(k=>`<div class="fr"><label for="c_${k.replace(/ /g,"")}">${k}</label><div style="display:flex;gap:8px;align-items:center">${k!=="Border"?shapeSVG(k,null,22):""}<input type="color" id="c_${k.replace(/ /g,"")}" data-color="${k}" value="${color(k).toLowerCase()}"></div></div>`).join("")}
     <button class="lbtn" data-act="resetcolors">Reset colors</button></div></div>
-    <p class="hint" style="margin-top:12px">StepSheet build 29${"launchQueue" in window?" · can open .soe files from Windows":""}</p>`; }
+    <p class="hint" style="margin-top:12px">StepSheet build 30${"launchQueue" in window?" · can open .soe files from Windows":""}<br>
+      Last start: ${!("launchQueue" in window)?"this browser can't open files from Windows":!lastLaunch?"normal (the browser didn't start it as an app)":lastLaunch.files?`from a file (${esc(lastLaunch.names)})`:"as an app, but the browser passed no file"}</p>`; }
 
 /* ===================================================================== events */
 document.addEventListener("click",e=>{
@@ -1087,8 +1088,10 @@ const draftReady=restoreDraft();
 /* "Open with > StepSheet" from Windows Explorer (installed app in Edge or Chrome).
    The manifest registers .soe; the browser hands the chosen file over here.
    Save writes back to that same file (the browser asks once for permission). */
+let lastLaunch=null;   // what the browser handed over on the last app launch (shown in Settings to help diagnose Open with)
 if("launchQueue" in window) window.launchQueue.setConsumer(async params=>{
-  const h=params&&params.files&&params.files[0]; if(!h||(h.kind&&h.kind!=="file")) return;
+  const fs=(params&&params.files)||[]; lastLaunch={files:fs.length, names:fs.map(f=>f.name).join(", "), at:Date.now()};
+  const h=fs[0]; if(!h||(h.kind&&h.kind!=="file")) return;
   await Promise.race([draftReady.catch(()=>{}),new Promise(r=>setTimeout(r,3000))]);   // never wait long on the saved draft
   if(!(await confirmDiscard())) return;
   try{ const f=await h.getFile(); loadDoc(await readSoeFile(f),h); toast("Opened "+f.name); }
