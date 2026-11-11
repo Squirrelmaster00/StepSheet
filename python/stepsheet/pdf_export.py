@@ -376,24 +376,20 @@ def build_instructions_pdf(doc: Document, out, palette=None, quality="Medium",
             if t.cycletime.strip():
                 c.setFont(reg, 7)
                 c.drawCentredString(ix + iw_ - side_w / 2, iy + ih_ - top_h / 2 + top_h / 4 - 2.5, t.cycletime.strip())
-            rc = (getattr(t, "code", "") or "").strip()   # USCG / ABYC reference, lower half of the corner box
+            rc = (getattr(t, "code", "") or "").strip()   # USCG / ABYC reference: thin strip along the bottom, only when set
+            strip_h = 0
             if rc:
-                from reportlab.lib.utils import simpleSplit
-                bw, bh, fs = side_w - 3, top_h / 2 - 2, 7.0
-                while True:
-                    L = simpleSplit(rc, reg, fs, bw)
-                    if (len(L) * fs * 1.05 <= bh and all(c.stringWidth(x, reg, fs) <= bw for x in L)) or fs <= 4.5:
-                        break
+                strip_h = 9 if dense else 10.5
+                fs = 6.0 if dense else 7.0
+                while c.stringWidth(rc, reg, fs) > iw_ - 8 and fs > 4.5:
                     fs -= 0.5
-                c.setFont(reg, fs)
-                cy = iy + ih_ - top_h * 0.75 + (len(L) - 1) * fs * 0.525 - fs * 0.35
-                for x in L:
-                    c.drawCentredString(ix + iw_ - side_w / 2, cy, x)
-                    cy -= fs * 1.05
+                c.setStrokeColor(black); c.setLineWidth(0.5); c.line(ix, iy + strip_h, ix + iw_, iy + strip_h)
+                c.setFillColor(black); c.setFont(reg, fs)
+                c.drawRightString(ix + iw_ - 4, iy + (strip_h - fs * 0.72) / 2, rc)
 
             # picture
             img = imgs.get(t.image_id)
-            ax, ay, aw, ah = ix + 2, iy + 2, iw_ - 4, ih_ - top_h - 4
+            ax, ay, aw, ah = ix + 2, iy + 2 + strip_h, iw_ - 4, ih_ - top_h - 4 - strip_h
             if img:
                 ir, (pw, ph) = img
                 s = min(aw / pw, ah / ph)

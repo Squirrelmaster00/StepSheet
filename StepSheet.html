@@ -680,12 +680,11 @@ async function buildInstructions(d,pdfName,progress,lang){
       while(true){ lines=split(capText,"reg",fsz,capW); if(lines.length*fsz*1.02<=topH-2||fsz<=5) break; fsz-=0.5; }
       P.fill(BLACK); let yy=iy+ih-fsz*.95; for(const ln of lines){ P.text(ix+shapeW+4,yy,ln,"reg",fsz); yy-=fsz*1.02; }
       if((t.cycletime||"").trim()) P.text(ix+iw-sideW/2,iy+ih-topH/2+topH/4-2.5,t.cycletime.trim(),"reg",7,"center");
-      const rc=(t.code||"").trim();   // USCG / ABYC reference, in the lower half of the corner box
-      if(rc){ const bw=sideW-3, bh=topH/2-2; let fs=7, L;
-        while(true){ L=split(rc,"reg",fs,bw); if((L.length*fs*1.05<=bh && L.every(l=>tw(l,"reg",fs)<=bw)) || fs<=4.5) break; fs-=0.5; }
-        let cy=iy+ih-topH*.75+(L.length-1)*fs*.525-fs*.35; for(const l of L){ P.text(ix+iw-sideW/2,cy,l,"reg",fs,"center"); cy-=fs*1.05; } }
+      const rc=(t.code||"").trim(); let stripH=0;   // USCG / ABYC reference: a thin strip along the bottom, only when set
+      if(rc){ stripH=dense?9:10.5; let fs=dense?6:7; while(tw(rc,"reg",fs)>iw-8&&fs>4.5) fs-=0.5;
+        P.stroke(BLACK); P.lw(0.5); P.line(ix,iy+stripH,ix+iw,iy+stripH); P.fill(BLACK); P.text(ix+iw-4,iy+(stripH-fs*.72)/2,rc,"reg",fs,"right"); }
       const img=await pdfImage(t.image_id);
-      if(img){ const ax=ix+2, ay=iy+2, aw=iw-4, ah=ih-topH-4, s=Math.min(aw/img.w,ah/img.h); P.image(img,ax+(aw-img.w*s)/2,ay+(ah-img.h*s)/2,img.w*s,img.h*s); }
+      if(img){ const ax=ix+2, ay=iy+2+stripH, aw=iw-4, ah=ih-topH-4-stripH, s=Math.min(aw/img.w,ah/img.h); P.image(img,ax+(aw-img.w*s)/2,ay+(ah-img.h*s)/2,img.w*s,img.h*s); }
       progress&&progress(++done,d.tasks.length);
     }
     pdfFooter(P,d,W,pno,pages.length,pdfName,dateText,lang);
@@ -1107,7 +1106,7 @@ function renderVI(){
         <label class="tog q" title="${qt?"This step is already a Quality step.":"Also integral to quality. It prints inside a Quality octagon."}"><input type="checkbox" data-q="${i}" ${t.quality||qt?"checked":""} ${qt?"disabled":""}> Integral to quality</label>
         <select class="pill" id="pp${i}" data-f="pics_per_page" data-i="${i}" aria-label="Page layout for step ${i+1}" title="Page layout in the PDF">${opt(PAGE_TYPES,t.pics_per_page,pageLabel)}</select>
         <label class="pill-lbl"><span class="tl">Text</span> <select class="pill" id="fs${i}" data-f="font_size" data-i="${i}" aria-label="Text size for step ${i+1}">${[8,9,10,11,12,13,14].map(x=>`<option value="${x}" ${String(x)===String(t.font_size)?"selected":""}>${x} pt</option>`).join("")}</select></label>
-        <label class="pill-lbl code-lbl"><span class="tl">Code</span> <input class="pill code" id="rc${i}" data-f="code" data-i="${i}" value="${esc(t.code||"")}" maxlength="40" spellcheck="false" autocomplete="off" placeholder="USCG / ABYC" aria-label="USCG or ABYC code for step ${i+1}" title="Coast Guard or ABYC reference. It prints in the corner box under the cycle time."></label>
+        <label class="pill-lbl code-lbl"><span class="tl">Code</span> <input class="pill code" id="rc${i}" data-f="code" data-i="${i}" value="${esc(t.code||"")}" maxlength="40" spellcheck="false" autocomplete="off" placeholder="USCG / ABYC" aria-label="USCG or ABYC code for step ${i+1}" title="Coast Guard or ABYC reference. It prints in a thin strip along the bottom of the step in the PDF."></label>
         ${t.image_title?`<span class="imgname" title="${esc(t.image_path||t.image_title)}">${esc(t.image_title)}</span>`:""}
       </div></div>
   </article>`; }).join("")}<button class="addcard rowtool" data-act="add">＋ Add step</button></div>`; }
@@ -1252,7 +1251,7 @@ function renderOpt(){ const d=D;
     ${Object.entries(flags).map(([k,l])=>`<label class="chk"><input type="checkbox" id="sec_${k}" data-sec="${k}" ${isT(d.security[k])?"checked":""}> Allow ${l}</label>`).join("")}</div>
   <div class="card"><h3>Colors</h3>${["Check","Work Content","Verify","Safety","Quality","Border"].map(k=>`<div class="fr"><label for="c_${k.replace(/ /g,"")}">${k}</label><div style="display:flex;gap:8px;align-items:center">${k!=="Border"?shapeSVG(k,null,22):""}<input type="color" id="c_${k.replace(/ /g,"")}" data-color="${k}" value="${color(k).toLowerCase()}"></div></div>`).join("")}
     <button class="lbtn" data-act="resetcolors">Reset colors</button></div></div>
-    <p class="hint" style="margin-top:12px">StepSheet build 35${"launchQueue" in window?" · can open .soe files from Windows":""}<br>
+    <p class="hint" style="margin-top:12px">StepSheet build 36${"launchQueue" in window?" · can open .soe files from Windows":""}<br>
       Last start: ${!("launchQueue" in window)?"this browser can't open files from Windows":!lastLaunch?"normal (the browser didn't start it as an app)":lastLaunch.files?`from a file (${esc(lastLaunch.names)})`:"as an app, but the browser passed no file"}</p>`; }
 
 /* ===================================================================== events */
