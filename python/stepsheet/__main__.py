@@ -19,8 +19,8 @@ import sys
 
 
 def pdf_file_name(doc, src, soe=False, lang="en"):
-    """Same naming as the app: "OPS-SOP-" + the digits in header row 2, box 2, then the title,
-    e.g. "OPS-SOP-000123 RAIL INSTALL.pdf"; Spanish uses the Spanish title + "(Español)"."""
+    """Same naming as the app: the number from header row 2, box 2, then the title,
+    e.g. "000123 RAIL INSTALL.pdf"; Spanish uses the Spanish title + "(Español)"."""
     import re
     def clean(x):
         x = re.sub(r"[\\/]+", "-", x or "")
@@ -28,7 +28,7 @@ def pdf_file_name(doc, src, soe=False, lang="en"):
     h = doc.header or {}
     raw = (h.get("udc4") or "").strip()
     runs = sorted(re.findall(r"\d+", raw), key=len, reverse=True)
-    num = "OPS-SOP-" + runs[0] if runs else ""   # only the number from row 2, box 2
+    num = runs[0] if runs else ""   # only the number from row 2, box 2
     title = clean(((doc.header_es or {}).get("udc1") or h.get("udc1")) if lang == "es" else h.get("udc1"))
     base = " ".join(x for x in (num, title) if x) or os.path.splitext(os.path.basename(src))[0]
     base = base[:150].strip()
