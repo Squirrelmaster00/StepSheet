@@ -4,69 +4,79 @@
 /* Layout: one-screen work tool. Dark toolbar band, tab strip, scrolling step grid, status line. */
 :root{
   --bg:#e9ecf1; --panel:#ffffff; --panel2:#f5f7fa; --ink:#1b222c; --muted:#5f6b7a; --line:#d3d9e1; --line2:#e6e9ee;
-  --bar:#232d3b; --bar-ink:#f3f5f8; --bar-btn:#323e50; --bar-line:#4a5870;
-  --accent:#1d5fae; --accent-ink:#ffffff; --sel:#e1ecfb; --danger:#b3261e; --ok:#2e7d32; --focus:#8ab6ee;
+  --bar:#232d3b; --bar-ink:#f3f5f8; --bar-btn:#323e50; --bar-line:#6a7a92;
+  --accent:#1d5fae; --accent-ink:#ffffff; --sel:#e1ecfb; --danger:#b3261e; --ok:#2e7d32; --focus:#1d5fae; --edge:#8792a2;
+  --va:#2a7d36; --nva:#6b7480; --cv:#1d5fae;
   --scrim:rgba(18,24,33,.45);
   --font:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
   --mono:Consolas,"Cascadia Mono",Menlo,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#12161c; --panel:#1a2029; --panel2:#202734; --ink:#e7ebf1; --muted:#9aa5b4; --line:#323c4b; --line2:#272f3b;
-  --bar:#0d1117; --bar-ink:#e7ebf1; --bar-btn:#222b38; --bar-line:#39465a;
-  --accent:#4b8fe0; --accent-ink:#0b1320; --sel:#22344d; --danger:#ef8a80; --ok:#7cc47f; --focus:#4b8fe0; --scrim:rgba(0,0,0,.6); color-scheme:dark}}
+  --bar:#0d1117; --bar-ink:#e7ebf1; --bar-btn:#222b38; --bar-line:#56647a;
+  --accent:#4b8fe0; --accent-ink:#0b1320; --sel:#22344d; --danger:#ef8a80; --ok:#7cc47f; --focus:#7fb0ee; --edge:#7a879b; --scrim:rgba(0,0,0,.6); color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#12161c; --panel:#1a2029; --panel2:#202734; --ink:#e7ebf1; --muted:#9aa5b4; --line:#323c4b; --line2:#272f3b;
-  --bar:#0d1117; --bar-ink:#e7ebf1; --bar-btn:#222b38; --bar-line:#39465a;
-  --accent:#4b8fe0; --accent-ink:#0b1320; --sel:#22344d; --danger:#ef8a80; --ok:#7cc47f; --focus:#4b8fe0; --scrim:rgba(0,0,0,.6); color-scheme:dark}
+  --bar:#0d1117; --bar-ink:#e7ebf1; --bar-btn:#222b38; --bar-line:#56647a;
+  --accent:#4b8fe0; --accent-ink:#0b1320; --sel:#22344d; --danger:#ef8a80; --ok:#7cc47f; --focus:#7fb0ee; --edge:#7a879b; --scrim:rgba(0,0,0,.6); color-scheme:dark}
 *{box-sizing:border-box}
 html,body{height:100%}
 html{background:var(--bar)}  /* so any home-indicator strip under the body matches the bottom bar, never a black gap */
 @supports (height:100dvh){ body{height:100dvh} }
 body{margin:0;font:13px/1.4 var(--font);color:var(--ink);background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
 button,select,input,textarea{font:inherit;color:inherit}
-:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
-.bar{background:var(--bar);color:var(--bar-ink);padding-top:calc(7px + env(safe-area-inset-top,0px));padding-bottom:7px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:6px}
-.bar-top{display:flex;align-items:center;gap:10px;min-width:0}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.bar :focus-visible,.mobbar :focus-visible{outline-color:#fff}
+.bar{background:var(--bar);color:var(--bar-ink);padding-top:calc(8px + env(safe-area-inset-top,0px));padding-bottom:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.bar-top{display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 220px}
 .brand{font-weight:700;display:flex;align-items:center;gap:8px;white-space:nowrap}
 .mark{width:20px;height:20px;flex:none}
 .file{opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
 .file .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ffb020;margin-left:6px;vertical-align:middle}
-.tb{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.tb{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .sep{width:1px;height:22px;background:var(--bar-line);margin:0 3px}
-.btn{border:1px solid var(--bar-line);background:var(--bar-btn);color:var(--bar-ink);border-radius:5px;padding:4px 9px;cursor:pointer;white-space:nowrap}
+.btn{border:1px solid var(--bar-line);background:var(--bar-btn);color:var(--bar-ink);border-radius:6px;padding:5px 11px;cursor:pointer;white-space:nowrap}
 .btn:hover{filter:brightness(1.15)}
 .lbl-short{display:none}  /* phones swap to the short label (see max-width:760px) */
-.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.tabs{display:flex;gap:2px;padding-top:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow-x:auto;flex:none}
-.tabs button{border:1px solid var(--line);border-bottom:none;background:var(--panel2);padding:7px 14px;border-radius:7px 7px 0 0;cursor:pointer;color:var(--muted);white-space:nowrap}
-.tabs button.on{background:var(--panel);color:var(--ink);font-weight:600}
-.mainwrap{flex:1;min-height:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex}
-main{flex:1;min-width:0;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:0 7px 0 0}
-.status{padding-block:5px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));color:var(--muted);font-size:12px;display:flex;gap:14px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.tabs{display:flex;gap:4px;align-items:center;flex-wrap:wrap;padding-top:10px;padding-bottom:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));flex:none}
+.tabs button{border:none;background:none;padding:7px 16px;border-radius:999px;cursor:pointer;color:var(--muted);font-weight:600;white-space:nowrap}
+.tabs button:hover{background:var(--line2)}
+.tabs button.on{background:var(--ink);color:var(--bg)}
+.tabs .tab-set{margin-left:auto}
+.mainwrap{flex:1;min-height:0;display:flex}
+main{flex:1;min-width:0;overflow:auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-bottom:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.status{border-top:1px solid var(--line);background:var(--panel2);padding-block:5px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));color:var(--muted);font-size:12px;display:flex;gap:14px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
 table.grid{border-collapse:collapse;width:100%}
 .grid th{position:sticky;top:0;background:var(--panel2);border-bottom:1px solid var(--line);text-align:left;font-weight:600;padding:7px 8px;z-index:2;white-space:nowrap}
 .grid td{border-bottom:1px solid var(--line2);padding:6px 8px;vertical-align:top}
 .grid tr.sel td{background:var(--sel)}
 .grid td.num{width:44px;text-align:center;font-weight:700;color:var(--muted);cursor:pointer;user-select:none;vertical-align:middle;font-variant-numeric:tabular-nums}
-.thumb{width:168px;height:100px;border:1px dashed var(--line);border-radius:5px;display:flex;align-items:center;justify-content:center;background:var(--panel2);position:relative;overflow:hidden;cursor:pointer;color:var(--muted);font-size:12px;text-align:center}
+.thumb{width:168px;height:100px;border:1.5px dashed var(--edge);border-radius:5px;display:flex;align-items:center;justify-content:center;background:var(--panel2);position:relative;overflow:hidden;cursor:pointer;color:var(--muted);font-size:12px;text-align:center}
 .thumb img{max-width:100%;max-height:100%;display:block}
+.thumb.has{border:none;background:#1b222c}
+.thumb.has::after{content:"";position:absolute;inset:0;border-radius:inherit;outline:1px solid rgba(0,0,0,.1);outline-offset:-1px;pointer-events:none}
 .thumb.drop{border-color:var(--accent);border-style:solid}
 .thumb .x{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.65);color:#fff;border:none;border-radius:3px;width:22px;height:22px;cursor:pointer;display:none}
 .thumb:hover .x,.thumb:focus-within .x{display:block}
 .typesel{display:flex;align-items:center;gap:6px}
 .qchk{margin:6px 0 0;font-size:12px;color:var(--muted);white-space:nowrap}
-select.s,input.f,textarea.cap{border:1px solid var(--line);border-radius:5px;background:var(--panel);padding:4px 6px}
+select.s,input.f,textarea.cap{border:1px solid var(--edge);border-radius:6px;background:var(--panel);padding:4px 6px}
 textarea.cap{width:100%;min-height:72px;resize:vertical;padding:6px 8px;line-height:1.35}
 .capmeta{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12px;margin-top:4px;flex-wrap:wrap}
 .ro{max-width:560px}
 input.small{width:90px}
 td.c,th.c{text-align:center}
 tfoot td{font-weight:600;background:var(--panel2);border-top:1px solid var(--line)}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;flex-wrap:wrap}
-.seg label{padding:4px 9px;cursor:pointer;border-right:1px solid var(--line);white-space:nowrap}
+.seg{display:inline-flex;border:1px solid var(--edge);border-radius:6px;overflow:hidden;flex-wrap:wrap}
+.seg label{padding:4px 9px;cursor:pointer;border-right:1px solid var(--edge);white-space:nowrap;color:var(--muted)}
 .seg label:last-child{border-right:none}
 .seg input{position:absolute;opacity:0;pointer-events:none}
-.seg label:has(input:checked){background:var(--sel);font-weight:600}
+.seg label:has(input:checked){background:#5f6b7a;color:#fff;font-weight:600}
+.seg label.vVA:has(input:checked){background:var(--va)}
+.seg label.vNVA:has(input:checked){background:var(--nva)}
+.seg label.vTQC:has(input:checked){background:var(--cv)}
 .seg label:has(input:focus-visible){outline:2px solid var(--focus);outline-offset:-2px}
 .chart{padding:14px 16px}
 .review{padding:16px 20px;max-width:900px;line-height:1.55}
@@ -81,14 +91,14 @@ tfoot td{font-weight:600;background:var(--panel2);border-top:1px solid var(--lin
 .esgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:6px 16px;margin-top:8px}
 .revbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
 h3{margin:2px 0 10px;font-size:14px}
-.opts{padding:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:16px}
-.card{border:1px solid var(--line);border-radius:8px;padding:14px;min-width:0}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:16px}
+.card{border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0;background:var(--panel)}
 .fr{display:grid;grid-template-columns:140px minmax(0,1fr);gap:6px 10px;align-items:center;margin-bottom:6px}
 .fr>label{color:var(--muted)}
 .fr input.f,.fr select{width:100%}
 .chk{display:flex;gap:7px;align-items:center;margin:4px 0}
 .logoprev{height:46px;max-width:170px;border:1px solid var(--line);border-radius:4px;padding:3px;background:#fff;object-fit:contain}
-.lbtn{border:1px solid var(--line);background:var(--panel);border-radius:5px;padding:4px 10px;cursor:pointer}
+.lbtn{border:1px solid var(--edge);background:var(--panel);border-radius:5px;padding:4px 10px;cursor:pointer}
 .lbtn:hover{background:var(--panel2)}
 .lbtn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .lbtn.danger{color:var(--danger)}
@@ -120,9 +130,14 @@ h3{margin:2px 0 10px;font-size:14px}
 .revnew{color:var(--ink)}
 .revthumb{width:74px;height:50px;object-fit:cover;border:1px solid var(--line);border-radius:4px;flex:none}
 .revthumb.nopic{display:flex;align-items:center;justify-content:center;background:var(--panel2);color:var(--muted);font-size:10px;text-align:center}
-.menu{position:absolute;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:30;min-width:240px;padding:4px 0}
-.menu button{display:block;width:100%;text-align:left;border:none;background:none;padding:7px 12px;cursor:pointer}
-.menu button:hover{background:var(--sel)}
+.menu{position:fixed;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:9px;box-shadow:0 10px 28px rgba(0,0,0,.2);z-index:30;min-width:230px;max-width:calc(100vw - 16px);padding:5px;overscroll-behavior:contain;max-height:calc(100dvh - 16px);overflow:auto}
+.menu button{display:flex;gap:10px;align-items:center;width:100%;text-align:left;border:none;background:none;padding:7px 10px;border-radius:6px;cursor:pointer;color:inherit;white-space:nowrap}
+.menu button:hover,.menu button:focus-visible{background:var(--sel);outline:none}
+.menu button small{margin-left:auto;color:var(--muted);font-size:11.5px}
+.menu button.danger{color:var(--danger)}
+.menu button:disabled{opacity:.45;cursor:default}
+.menu .ck{width:16px;text-align:center;font-weight:700}
+.menu .msep{border-top:1px solid var(--line2);margin:4px 2px}
 .stepno{display:none}
 .mobbar{display:none}
 /* Phones and small tablets: steps become cards, toolbar swipes sideways, row tools sit at the bottom. */
@@ -133,9 +148,9 @@ h3{margin:2px 0 10px;font-size:14px}
   .tb{flex-wrap:wrap;gap:6px}
   .lbl-full{display:none} .lbl-short{display:inline}
   .tb::-webkit-scrollbar{display:none}
-  .tb .rowtool,.tb .sep:last-of-type{display:none}
+  .tb .rowtool,.tb .sep{display:none}
   .btn{padding:8px 12px;font-size:14px}
-  .tabs{padding-top:6px} .tabs button{padding:9px 13px}
+  .tabs button{padding:9px 14px}
   main{border-radius:0 7px 0 0}
   .status{display:none}
   .mobbar{display:grid;grid-template-columns:repeat(6,1fr);background:var(--bar);border-top:1px solid var(--bar-line);padding-top:3px;padding-bottom:calc(3px + env(safe-area-inset-bottom,0px));padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);flex:none}
@@ -144,6 +159,14 @@ h3{margin:2px 0 10px;font-size:14px}
   .mobbar button:disabled{opacity:.35}
   input,select,textarea,.f,.s,textarea.cap{font-size:16px!important}
   select.s,input.f{min-height:40px}
+  .scard{grid-template-columns:44px minmax(0,1fr) 34px;gap:10px;padding:10px}
+  .scard .thumb{grid-column:2;width:100%;height:auto;aspect-ratio:16/10;max-height:260px}
+  .scard .sbody{grid-column:1/-1}
+  .scard .kebab{grid-column:3;grid-row:1}
+  .scard textarea.cap{min-height:84px}
+  select.pill,.tog{min-height:36px;font-size:14px!important}
+  .tabs{padding-top:8px;padding-bottom:8px} .tabs .tab-set{margin-left:auto}
+  main{padding-bottom:12px}
   .grid thead{display:none}
   .grid,.grid tbody,.grid tfoot{display:block;width:100%}
   .grid tr{display:flex;flex-wrap:wrap;gap:8px 10px;padding:12px 14px;border-bottom:8px solid var(--bg);background:var(--panel)}
@@ -160,7 +183,6 @@ h3{margin:2px 0 10px;font-size:14px}
   .grid td.c input{width:20px;height:20px;margin:0}
   .grid td.ro{font-weight:500;max-width:none}
   .grid tfoot tr{border-bottom:none} .grid tfoot td:empty{display:none}
-  .thumb{width:100%;height:auto;aspect-ratio:16/10;max-height:260px}
   .thumb .x{display:block;width:34px;height:34px;font-size:18px}
   .typesel{gap:8px} .typesel select{flex:1}
   textarea.cap{min-height:84px}
@@ -195,6 +217,65 @@ h3{margin:2px 0 10px;font-size:14px}
 }
 /* Desktop-only on touch (phones + tablets): analysis/Spanish tabs and their toolbar actions. */
 @media (pointer:coarse){ .tabs .tab-adv,.tb .adv{display:none} .tb .sep{display:none} }
+/* ---- Steps as cards ---- */
+.cards{display:grid;gap:10px}
+.scard{display:grid;grid-template-columns:48px 190px minmax(0,1fr) 34px;gap:14px;align-items:start;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.scard.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--sel)}
+.scard.dragover{box-shadow:0 -3px 0 0 var(--accent)}
+.scard.dragover.below{box-shadow:0 3px 0 0 var(--accent)}
+.snum{display:flex;flex-direction:column;align-items:center;gap:6px}
+.selbtn{border:none;background:none;padding:2px;border-radius:8px;cursor:pointer;line-height:0}
+.handle{color:var(--nva);font-size:15px;letter-spacing:-2px;cursor:grab;user-select:none;padding:2px 6px;border-radius:5px}
+.handle:hover{background:var(--line2)}
+.scard .thumb{width:190px;height:118px;border-radius:8px}
+.sbody{display:flex;flex-direction:column;gap:7px;min-width:0}
+.scard textarea.cap{font-size:15px;line-height:1.4;min-height:58px;padding:8px 10px;border-radius:8px}
+.meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.pw{position:relative;display:inline-flex;align-items:center}
+.pw .dot{position:absolute;left:11px;width:9px;height:9px;border-radius:2px;pointer-events:none}
+select.pill{border:1px solid var(--edge);border-radius:999px;background:var(--panel2);padding:3px 8px 3px 10px;font-size:12.5px;cursor:pointer;min-height:28px}
+.pw select.pill{padding-left:26px;font-weight:600}
+.pill-lbl{display:inline-flex;gap:6px;align-items:center;font-size:12.5px;color:var(--muted)}
+.tog{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--edge);border-radius:999px;padding:3px 10px 3px 8px;font-size:12.5px;color:var(--muted);background:var(--panel2);cursor:pointer;white-space:nowrap;min-height:28px}
+.tog input{margin:0;width:14px;height:14px;accent-color:var(--ink)}
+.tog:has(input:checked){border-color:var(--ink);color:var(--ink);background:var(--panel);font-weight:600}
+.tog.q:has(input:checked){border-color:#3e9a6a;background:#e8f6ee;color:#11633a}
+.tog.q input{accent-color:#11633a}
+.tog:has(input:disabled){opacity:.7;cursor:default}
+.tog:has(input:focus-visible){outline:2px solid var(--focus);outline-offset:2px}
+.imgname{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px}
+.kebab{border:none;background:none;width:34px;height:34px;border-radius:7px;color:var(--muted);font-size:18px;line-height:1;cursor:pointer}
+.kebab:hover,.kebab[aria-expanded="true"]{background:var(--sel);color:var(--ink)}
+.addcard{border:1.5px dashed var(--edge);border-radius:10px;padding:12px;text-align:center;color:var(--accent);font-weight:600;background:var(--panel2);cursor:pointer;width:100%;font-size:14px}
+.addcard:hover{background:var(--sel)}
+@media (pointer:coarse){ .handle{display:none} }
+/* ---- Analysis ---- */
+.an{display:grid;gap:10px}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:10px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 14px}
+.kpi small{display:block;color:var(--muted);font-weight:600;font-size:11px;letter-spacing:.05em;text-transform:uppercase}
+.kpi b{font-size:22px;font-variant-numeric:tabular-nums}
+.kpi span{font-size:12.5px;color:var(--muted);font-weight:600;margin-left:6px;font-variant-numeric:tabular-nums}
+.antab{overflow-x:auto}
+.antab table.grid th{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.antab .grid td{vertical-align:middle}
+.antab td.ro{max-width:260px;min-width:160px}
+.antab input.f.t{width:64px;text-align:right;font-variant-numeric:tabular-nums}
+.antab .seg{flex-wrap:nowrap}
+.antab .seg label{padding:3px 9px;font-size:12.5px}
+.wl{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.wchip{border:1px solid #f0b35a;background:#fff4e5;color:#8a4b00;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.wchip:hover{border-color:#8a4b00}
+.wadd{border:1px dashed var(--edge);background:none;color:var(--muted);border-radius:999px;padding:2px 9px;font-size:12px;cursor:pointer;white-space:nowrap}
+.wadd:hover{color:var(--ink);border-style:solid}
+.anfoot{padding:8px 12px;border-top:1px solid var(--line);background:var(--panel2);color:var(--muted);font-size:12.5px}
+.tchart{padding:12px 14px}
+.tchart h3{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.crow{display:flex;align-items:center;gap:8px;min-height:18px;margin:3px 0;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.crow .cn{width:18px;text-align:right;flex:none}
+.ctrack{flex:1;display:flex;align-items:center;gap:8px;min-width:0;max-width:calc(100% - 200px)}
+.cbar{height:12px;border-radius:3px;flex:none}
+.clab{white-space:nowrap;flex:none}
 .ppegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;padding:2px;margin-top:4px}
 .ppetile{border:2px solid var(--line);border-radius:9px;padding:9px 6px;cursor:pointer;background:var(--panel);color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;font:inherit}
 .ppetile svg{width:54px;height:54px;flex:none}
@@ -212,37 +293,23 @@ h3{margin:2px 0 10px;font-size:14px}
     <div class="brand"><svg class="mark" viewBox="0 0 20 20" aria-hidden="true"><rect x="1" y="1" width="8" height="8" fill="none" stroke="#FFFF00" stroke-width="2"/><circle cx="15" cy="5" r="4" fill="none" stroke="#5b8cff" stroke-width="2"/><polygon points="5,11 9,19 1,19" fill="none" stroke="#FF3B30" stroke-width="2" stroke-linejoin="round"/><polygon points="15,10.5 19.5,15 15,19.5 10.5,15" fill="none" stroke="#FF6347" stroke-width="2"/></svg>StepSheet</div>
     <div class="file" id="fname"></div>
   </div>
-  <div class="tb" id="tb">
-    <button class="btn" data-act="new">New</button>
-    <button class="btn" data-act="open">Open…</button>
-    <button class="btn" data-act="save" title="Ctrl+S">Save</button>
-    <button class="btn adv" data-act="saveas">Save As…</button>
-    <span class="sep"></span>
-    <button class="btn primary" data-act="pdf"><span class="lbl-full">Create Instructions PDF</span><span class="lbl-short">PDF</span></button>
-    <button class="btn adv" data-act="soe">Create SOE PDF</button>
-    <button class="btn adv" data-act="pdfes" title="Instructions PDF with the Spanish text">Spanish PDF</button>
-    <button class="btn" data-act="backupimg" title="Save every photo as a .zip you can keep in OneDrive / Files"><span class="lbl-full">⤓ Back up photos</span><span class="lbl-short">⤓ Backup</span></button>
-    <button class="btn" data-act="ppe" title="Build a Required PPE image from tiles"><span class="lbl-full">🦺 Build PPE</span><span class="lbl-short">🦺 PPE</span></button>
-    <span class="sep"></span>
-    <button class="btn adv" data-act="copilot" title="Copy, paste or export steps as text">Copilot / Excel ▾</button>
+  <div class="tb" id="tb" role="toolbar" aria-label="StepSheet">
+    <button class="btn" data-menu="file" aria-haspopup="menu" aria-expanded="false">File ▾</button>
+    <button class="btn" data-menu="step" aria-haspopup="menu" aria-expanded="false">Step ▾</button>
+    <button class="btn adv" data-act="copilot" aria-haspopup="menu" aria-expanded="false" title="Copy, paste or reformat steps with Copilot">Copilot ▾</button>
+    <button class="btn" data-act="ppe" title="Build a Required PPE image from tiles">🦺 PPE</button>
     <button class="btn adv" data-act="install" id="installBtn" title="Install StepSheet as an app" hidden>⤓ Install app</button>
     <span class="sep"></span>
-    <button class="btn rowtool" data-act="add">+ Row</button>
-    <button class="btn rowtool" data-act="insert">Insert Above</button>
-    <button class="btn rowtool" data-act="dup">Duplicate</button>
-    <button class="btn rowtool" data-act="up" aria-label="Move up">▲</button>
-    <button class="btn rowtool" data-act="down" aria-label="Move down">▼</button>
-    <button class="btn rowtool" data-act="del">Delete</button>
+    <button class="btn rowtool" data-act="add">+ Step</button>
+    <button class="btn primary" data-menu="pdf" aria-haspopup="menu" aria-expanded="false"><span class="lbl-full">Create PDF ▾</span><span class="lbl-short">PDF ▾</span></button>
   </div>
 </header>
-<nav class="tabs" id="tabs">
+<nav class="tabs" id="tabs" aria-label="Views">
   <button data-tab="vi" class="on">Steps</button>
-  <button data-tab="cv" class="tab-adv">Cycle / Value</button>
-  <button data-tab="act" class="tab-adv">Activity</button>
-  <button data-tab="waste" class="tab-adv">Wastes</button>
-  <button data-tab="opt">Options</button>
+  <button data-tab="an" class="tab-adv" title="Cycle time, value added, activity and wastes">Analysis</button>
   <button data-tab="es" class="tab-adv" title="Spanish translation">Spanish</button>
   <button data-tab="review" title="Plain-text view for Copilot in the Edge sidebar">Review</button>
+  <button data-tab="opt" class="tab-set">⚙ Document settings</button>
 </nav>
 <div class="mainwrap"><main id="main"></main></div>
 <div class="status" id="status"></div>
@@ -278,6 +345,7 @@ const HEADER_LABELS={udc1:"Title",udc2:"Subtitle",udc3:"Row 2, box 1",udc4:"Row 
 // Example hints shown as placeholders in the Options header rows (generic, no brand names).
 const HEADER_HINTS={udc1:"WORK INSTRUCTION TITLE",udc2:"Subtitle (optional)",udc3:"REVISION DATE: XX/XX/XX",udc4:"OPS-SOP-XXXXXX",udc5:"COMPLETION DATE: XX/XX/XX",udc6:"CREATED BY: Your Name Here",udc7:"This document is intended for internal use only."};
 const LAYOUTS={"1 Picture Landscape":[1,1,"L"],"1 Picture Portrait":[1,1,"P"],"2 Picture Portrait":[1,2,"P"],"4 Picture Landscape":[2,2,"L"],"4 Picture Portrait":[2,2,"P"],"6 Picture Landscape":[3,2,"L"],"6 Picture Portrait":[2,3,"P"],"9 Picture Portrait":[3,3,"P"]};
+const pageLabel=p=>{ const m=/^(\d) Picture (\w+)$/.exec(p||""); return m?`${m[1]} photo${m[1]==="1"?"":"s"} · ${m[2].toLowerCase()}`:p; };  // display only; files keep the original names
 const QUALITY_PX={Low:800,Medium:1400,High:2400,Original:0};
 const DEFAULT_COLORS={"Check":"#FF0000","Work Content":"#FFFF00","Verify":"#0000FF","Safety":"#FF6347","Quality":"#00A651","Border":"#000000"};
 const VALUE_NAMES={VA:"Value Added",NVA:"Non-Value Added",TQC:"Check & Verify"};
@@ -677,7 +745,7 @@ async function doSave(as){
 }
 function afterSave(name){ if(name && /\.soe$/i.test(name)) D.name=name; dirty=false; scheduleDraft(); if(ST.remember_header){ ST.saved_header={...D.header}; saveSettings(); } renderHeader(); }
 async function doPdf(kind){
-  const base=(D.name||"untitled").replace(/\.soe$/i,""); const name=base+(kind==="soe"?" SOE.pdf":kind==="es"?" (Español).pdf":".pdf");
+  const base=(D.name||"untitled").replace(/\.soe$/i,""); const name=base+(kind==="soe"?" Analysis.pdf":kind==="es"?" (Español).pdf":".pdf");
   if(kind==="es"){ const miss=D.tasks.filter(t=>!(t.caption_es||"").trim()).length; if(miss===D.tasks.length){
     if(coarsePointer()) toast("This file has no Spanish yet. Add it on a computer (Spanish tab), then make the Spanish PDF here.",6000);
     else { toast("No Spanish yet. Use the Spanish tab to translate the steps first.",5000); tab="es"; render(); }
@@ -795,13 +863,50 @@ function ask(msg,ok="Discard changes"){ return new Promise(res=>{ modal(`<h2>Uns
   (d,close)=>d.querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{ close(); res(b.dataset.r==="1"); })); }); }
 async function confirmDiscard(){ return !dirty || ask("This file has changes that aren't saved. Continue without saving?"); }
 
+/* Drop-down menus: toolbar menus, the Copilot menu, each step's ⋯ menu and the waste picker.
+   Arrow keys move, Escape closes and returns focus to the button that opened it. */
+function closeMenus(refocus){ document.querySelectorAll(".menu").forEach(m=>{ const b=m._btn; m.remove(); if(b){ b.setAttribute("aria-expanded","false"); if(refocus) b.focus(); } }); }
+function openMenu(btn,items,align){
+  const was=btn.getAttribute("aria-expanded")==="true"; closeMenus(false); if(was) return;
+  const m=document.createElement("div"); m.className="menu"; m.setAttribute("role","menu");
+  m.innerHTML=items.filter(Boolean).map((it,k)=>it==="-"?'<div class="msep" role="separator"></div>':
+    `<button type="button" role="${it.checked!=null?"menuitemcheckbox":"menuitem"}" ${it.checked!=null?`aria-checked="${!!it.checked}"`:""} data-k="${k}" class="${it.danger?"danger":""}" ${it.disabled?"disabled":""}>${it.checked!=null?`<span class="ck" aria-hidden="true">${it.checked?"✓":""}</span>`:""}${esc(it.label)}${it.hint?`<small>${esc(it.hint)}</small>`:""}</button>`).join("");
+  const list=items.filter(Boolean); document.body.appendChild(m); m._btn=btn; btn.setAttribute("aria-expanded","true");
+  const r=btn.getBoundingClientRect(), w=m.offsetWidth, h=m.offsetHeight;
+  let left=align==="right"?r.right-w:r.left; left=Math.max(8,Math.min(left,innerWidth-w-8));
+  let top=r.bottom+4; if(top+h>innerHeight-8) top=Math.max(8,r.top-4-h);
+  m.style.left=left+"px"; m.style.top=top+"px";
+  const live=()=>[...m.querySelectorAll("button:not(:disabled)")];
+  m.addEventListener("click",e=>{ const b=e.target.closest("button[data-k]"); if(!b||b.disabled) return; const it=list[+b.dataset.k]; closeMenus(false); it.run(); });
+  m.addEventListener("keydown",e=>{ const L=live(), i=L.indexOf(document.activeElement);
+    if(e.key==="ArrowDown"){ e.preventDefault(); L[(i+1)%L.length].focus(); }
+    else if(e.key==="ArrowUp"){ e.preventDefault(); L[(i-1+L.length)%L.length].focus(); }
+    else if(e.key==="Home"){ e.preventDefault(); L[0].focus(); } else if(e.key==="End"){ e.preventDefault(); L[L.length-1].focus(); }
+    else if(e.key==="Escape"){ e.preventDefault(); e.stopPropagation(); closeMenus(true); } else if(e.key==="Tab") closeMenus(false); });
+  (live()[0]||m).focus({preventScroll:true});
+}
+document.addEventListener("pointerdown",e=>{ if(!e.target.closest(".menu")&&!e.target.closest('[aria-haspopup="menu"]')) closeMenus(false); });
+window.addEventListener("resize",()=>closeMenus(false));
+const touch=()=>coarsePointer();
+function toolbarMenu(btn){ const k=btn.dataset.menu, one=sel.size===1, i=sorted()[0]??0, n=D.tasks.length;
+  const items={
+    file:[{label:"New",run:()=>act("new")},{label:"Open…",hint:"Ctrl+O",run:()=>act("open")},{label:"Save",hint:"Ctrl+S",run:()=>act("save")},
+      touch()?null:{label:"Save As…",hint:"Ctrl+Shift+S",run:()=>act("saveas")},"-",{label:"Back up photos (.zip)",run:()=>act("backupimg")}],
+    step:[{label:"Add step",run:()=>act("add")},{label:"Insert step above",disabled:!n,run:()=>act("insert")},{label:sel.size>1?`Duplicate ${sel.size} steps`:"Duplicate step",disabled:!n,run:()=>act("dup")},
+      {label:"Move up",disabled:!n||i<=0,run:()=>act("up")},{label:"Move down",disabled:!n||sorted()[sel.size-1]>=n-1,run:()=>act("down")},"-",
+      {label:sel.size>1?`Delete ${sel.size} steps`:"Delete step",danger:true,disabled:!n,run:()=>act("del")}],
+    pdf:[{label:"Instructions PDF",run:()=>act("pdf")},touch()?null:{label:"Spanish PDF",run:()=>act("pdfes")},touch()?null:{label:"Analysis PDF",hint:"times, value, wastes",run:()=>act("soe")},"-",
+      touch()?null:{label:"Export steps to Excel (.csv)",run:()=>act("csv")},{label:"Back up photos (.zip)",run:()=>act("backupimg")}]
+  }[k];
+  openMenu(btn,items,k==="pdf"?"right":"left"); }
+function stepMenu(btn){ const i=+btn.dataset.stepmenu, n=D.tasks.length; sel=new Set([i]); lastClick=i; markSel();
+  openMenu(btn,[{label:"Move up",disabled:i<=0,run:()=>act("up")},{label:"Move down",disabled:i>=n-1,run:()=>act("down")},"-",
+    {label:"Insert step above",run:()=>act("insert")},{label:"Duplicate step",run:()=>act("dup")},"-",{label:"Delete step",danger:true,run:()=>act("del")}],"right"); }
+function wasteMenu(btn){ const i=+btn.dataset.wastemenu, t=D.tasks[i];
+  openMenu(btn,WASTES.map(w=>({label:WASTE_NAMES[w],checked:!!t.wastes[w],run:()=>{ t.wastes[w]=!t.wastes[w]; changed(true); setTimeout(()=>{ const b=$(`[data-wastemenu="${i}"]`); b&&b.focus(); },0); }})),"left"); }
 function copilotMenu(btn){
-  document.querySelectorAll(".menu").forEach(m=>m.remove());
-  const r=btn.getBoundingClientRect(); const m=document.createElement("div"); m.className="menu";
-  m.style.top=(r.bottom+4)+"px"; m.style.left=Math.max(8,Math.min(r.left,innerWidth-260))+"px";
-  m.innerHTML=`<button data-m="copy">Copy steps for Copilot</button><button data-m="paste">Paste steps from Copilot…</button><button data-m="prompt">Copilot prompt for new steps…</button><button data-m="vwi">Reformat &amp; bundle steps (VWI)…</button><button data-m="csv">Export steps to Excel (.csv)</button>`;
-  document.body.appendChild(m);
-  m.onclick=async e=>{ const k=e.target.dataset.m; if(!k) return; m.remove();
+  openMenu(btn,[{label:"Copy steps for Copilot",run:()=>copilotDo("copy")},{label:"Paste steps from Copilot…",run:()=>copilotDo("paste")},{label:"Copilot prompt for new steps…",run:()=>copilotDo("prompt")},{label:"Reformat & bundle steps (VWI)…",run:()=>copilotDo("vwi")}],"left"); }
+async function copilotDo(k){
     if(k==="copy"){ const t=stepsText(); if(await copyText(t)) toast("Steps copied. Paste them into Copilot.");
       else modal(`<h2>Copy steps</h2><p>Select all (Ctrl+A) and copy (Ctrl+C):</p><textarea readonly>${esc(t)}</textarea><div class="acts"><button class="lbtn primary" data-x>Done</button></div>`,(d,c)=>{ d.querySelector("textarea").select(); d.querySelector("[data-x]").onclick=c; }); }
     if(k==="prompt") modal(`<h2>Copilot prompt</h2><p>Paste this into Microsoft 365 Copilot, fill in the job, then bring its answer back with <b>Paste steps from Copilot</b>.</p><textarea id="pr">${esc(COPILOT_PROMPT)}</textarea><div class="acts"><button class="lbtn" data-x>Close</button><button class="lbtn primary" data-c>Copy prompt</button></div>`,
@@ -809,10 +914,8 @@ function copilotMenu(btn){
     if(k==="vwi"){ const t=vwiSourceText(); modal(`<h2>Reformat steps (VWI format)</h2><p>Paste this into Microsoft 365 Copilot. It rewrites your steps to your VWI standard and <b>bundles actions that can share one picture</b> into a single step. Bring the answer back with <b>Paste steps from Copilot</b> &rarr; <b>Review &amp; replace</b>, then accept or skip each step. Photos stay with their step, even where actions were bundled.</p><textarea id="vw">${esc(t)}</textarea><div class="acts"><button class="lbtn" data-x>Close</button><button class="lbtn primary" data-c>Copy</button></div>`,
       (d,c)=>{ d.querySelector("[data-x]").onclick=c; d.querySelector("[data-c]").onclick=async()=>{ const ta=d.querySelector("textarea"); if(await copyText(ta.value)) toast("Copied. Paste into Copilot."); else { ta.select(); toast("Press Ctrl+C to copy"); } }; }); }
     if(k==="paste") pasteDialog();
-    if(k==="csv"){ const base=(D.name||"untitled").replace(/\.soe$/i,""); const r=await saveBlob(base+" steps.csv",new Blob([csvText()],{type:"text/csv"}),[{description:"CSV",accept:{"text/csv":[".csv"]}}]); if(r.status==="saved") toast("Saved "+r.name); }
-  };
-  setTimeout(()=>document.addEventListener("click",function h(ev){ if(!m.contains(ev.target)){ m.remove(); document.removeEventListener("click",h); } }),0);
 }
+async function exportCsv(){ const base=(D.name||"untitled").replace(/\.soe$/i,""); const r=await saveBlob(base+" steps.csv",new Blob([csvText()],{type:"text/csv"}),[{description:"CSV",accept:{"text/csv":[".csv"]}}]); if(r.status==="saved") toast("Saved "+r.name); }
 function pasteDialog(){
   modal(`<h2>Paste steps from Copilot</h2><p>Paste a numbered list. A tag in brackets at the start of a step sets its type: <code>[Work Content]</code>, <code>[Check]</code>, <code>[Verify]</code>, <code>[Safety]</code>, <code>[Quality]</code>. Add <code>+ Quality</code> to another type to mark it quality-critical, e.g. <code>[Check + Quality]</code>. A <code>Title:</code> line sets the header title.</p>
     <textarea id="pasteBox" placeholder="Title: Standard Rail Layout&#10;1. [Safety] Wear REQUIRED P.P.E&#10;2. [Work Content] Mark STBD and PORT DOGHOUSE LOCATIONS"></textarea>
@@ -889,54 +992,72 @@ function shapeSVG(kind,n,size=26,quality=false){ const m=size/2;
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="flex:none">${combo?draw("Quality",(m-1.8)/1.1):""}${draw(kind,r)}${num}</svg>`; }
 function changed(re=false){ dirty=true; if(re) render(); else renderHeader(); scheduleDraft(); }
 function renderHeader(){
-  $("#fname").innerHTML=esc(D.name||"untitled.soe")+(dirty?'<span class="dot" title="Unsaved changes"></span>':"");
+  $("#fname").innerHTML=esc(D.name||"untitled.soe")+(dirty?'<span class="dot" title="Unsaved changes" role="img" aria-label="Unsaved changes"></span>':"");
   document.title=(dirty?"* ":"")+(D.name||"untitled.soe")+" - StepSheet";
   const t=D.tasks, counts={}; t.forEach(x=>counts[x.tasktype]=(counts[x.tasktype]||0)+1); const nq=t.filter(isQ).length; if(nq) counts["Integral to quality"]=nq; const total=t.reduce((a,x)=>a+num(x.cycletime),0);
-  $("#status").innerHTML=`<span>${t.length} steps</span>`+Object.entries(counts).map(([k,v])=>`<span>${esc(k)}: ${v}</span>`).join("")+(total?`<span>Total cycle: ${total}</span>`:"")+
-    `<span>${sel.size>1?sel.size+" rows selected":"Row "+(([...sel][0]??0)+1)+" selected"}</span>`+
+  $("#status").innerHTML=`<span>${t.length} step${t.length===1?"":"s"}</span>`+Object.entries(counts).map(([k,v])=>`<span>${esc(k)} ${v}</span>`).join("")+(total?`<span>Total time ${total}</span>`:"")+
+    (t.length?`<span>${sel.size>1?sel.size+" steps selected":"Step "+(([...sel][0]??0)+1)+" selected"}</span>`:"")+
     (lastDraft?`<span title="If this page is reloaded or closed, it reopens with this work.">Kept in this browser ${new Date(lastDraft).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}</span>`:"");
 }
 function render(){
-  document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===tab));
-  document.querySelectorAll(".rowtool").forEach(b=>b.disabled=tab==="opt"||tab==="review"||tab==="es");
-  const sc=$("#main").scrollTop; $("#main").innerHTML={vi:renderVI,cv:renderCV,act:renderAct,waste:renderWaste,opt:renderOpt,review:renderReview,es:renderEs}[tab](); $("#main").scrollTop=sc; renderHeader(); }
-const rowA=i=>`data-i="${i}" class="${sel.has(i)?"sel":""}"`;
+  if(!["vi","an","es","review","opt"].includes(tab)) tab="vi";
+  if(coarsePointer()&&(tab==="an"||tab==="es")) tab="vi";
+  document.querySelectorAll("#tabs button").forEach(b=>{ const on=b.dataset.tab===tab; b.classList.toggle("on",on); on?b.setAttribute("aria-current","page"):b.removeAttribute("aria-current"); });
+  document.querySelectorAll(".mobbar .rowtool").forEach(b=>b.disabled=tab!=="vi");
+  closeMenus(false);
+  const sc=$("#main").scrollTop; $("#main").innerHTML={vi:renderVI,an:renderAn,opt:renderOpt,review:renderReview,es:renderEs}[tab](); $("#main").scrollTop=sc; renderHeader(); }
+function markSel(){ document.querySelectorAll("[data-row]").forEach(r=>r.classList.toggle("sel",sel.has(+r.dataset.row))); renderHeader(); }
+const rowA=i=>`data-row="${i}" class="${sel.has(i)?"sel":""}"`;
 const numCell=i=>`<td class="num" data-sel="${i}" title="Click to select. Ctrl or Shift for several."><span class="stepno">Step </span>${i+1}</td>`;
+const typeDot=k=>{ const c=hexRGB(color(k)); return `rgb(${(isLight(c)?darker(c):c).map(v=>Math.round(v*255)).join(",")})`; };
 function renderVI(){
-  if(!D.tasks.length) return `<div class="empty"><div>No steps yet.</div><div class="row"><button class="lbtn primary" data-act="add">+ Add a step</button><button class="lbtn" data-act="open">Open a .soe file</button></div></div>`;
-  const opt=(list,v)=>list.map(x=>`<option ${x===v?"selected":""}>${x}</option>`).join("");
-  return `<table class="grid"><thead><tr><th></th><th>Image</th><th>Step Type</th><th>Page Type</th><th style="width:55%">Task</th></tr></thead><tbody>${D.tasks.map((t,i)=>`
-   <tr ${rowA(i)}>${numCell(i)}
-    <td class="cimg"><div class="thumb" data-img="${i}" tabindex="0" role="button" aria-label="Picture for step ${i+1}" title="Click, drop or paste a picture">${t.image_id&&D.images[t.image_id]?`<img src="${imgURL(t.image_id)}" alt=""><button class="x" data-rmimg="${i}" aria-label="Remove picture">×</button>`:"Add picture"}</div></td>
-    <td class="half" data-label="Step type"><div class="typesel">${shapeSVG(t.tasktype,i+1,isQ(t)?34:26,isQ(t))}<select class="s" id="tt${i}" data-f="tasktype" data-i="${i}" aria-label="Step type">${opt(TASK_TYPES,t.tasktype)}</select></div>
-      <label class="chk qchk" title="${t.tasktype==="Quality"?"This step is already a Quality step.":"Mark this step as integral to quality as well as its type. It prints inside a Quality octagon."}"><input type="checkbox" data-q="${i}" ${t.quality||t.tasktype==="Quality"?"checked":""} ${t.tasktype==="Quality"?"disabled":""}> Integral to quality</label></td>
-    <td class="half" data-label="Page type"><select class="s" id="pp${i}" data-f="pics_per_page" data-i="${i}" aria-label="Page type">${opt(PAGE_TYPES,t.pics_per_page)}</select></td>
-    <td data-label="Task"><textarea class="cap" id="cap${i}" spellcheck="true" data-f="caption" data-i="${i}" aria-label="Task for step ${i+1}" placeholder="Task description">${esc(t.caption)}</textarea>
-      <div class="capmeta"><label for="fs${i}">Font</label><select class="s" id="fs${i}" data-f="font_size" data-i="${i}">${[8,9,10,11,12,13,14].map(x=>`<option ${String(x)===String(t.font_size)?"selected":""}>${x}</option>`).join("")}</select>${t.image_title?`<span title="${esc(t.image_path)}">${esc(t.image_title)}</span>`:""}</div></td>
-   </tr>`).join("")}</tbody></table>`; }
-function renderCV(){ let tot=0,va=0,tq=0;
-  const rows=D.tasks.map((t,i)=>{ const c=num(t.cycletime); tot+=c; if(t.value_added) va+=c; else if(t.tqc) tq+=c; const v=valueClass(t);
-    return `<tr ${rowA(i)}>${numCell(i)}<td class="ro">${esc(t.caption)}</td><td data-label="Cycle time"><input class="f small" id="ct${i}" data-f="cycletime" data-i="${i}" value="${esc(t.cycletime)}" inputmode="decimal" aria-label="Cycle time step ${i+1}"></td>
-      <td data-label="Value"><span class="seg">${["VA","NVA","TQC"].map(k=>`<label><input type="radio" name="v${i}" data-value="${i}" value="${k}" ${v===k?"checked":""}><span>${VALUE_NAMES[k]}</span></label>`).join("")}</span></td></tr>`; }).join("");
-  return `<table class="grid"><thead><tr><th></th><th>Task</th><th>Cycle Time</th><th>Value Added</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td></td><td>Totals</td><td>${tot||""}</td><td>VA ${va} · NVA ${tot-va-tq} · Check &amp; Verify ${tq}${tot?` · VA ratio ${Math.round(va/tot*100)}%`:""}</td></tr></tfoot></table>`; }
-function renderAct(){
-  const rows=D.tasks.map((t,i)=>{ const su=t.setup.selected&&!t.work.selected, g=su?t.setup:t.work;
-    return `<tr ${rowA(i)}>${numCell(i)}<td class="ro">${esc(t.caption)}</td><td class="c" data-label="Setup"><input type="radio" name="sw${i}" data-sw="${i}" value="setup" ${su?"checked":""} aria-label="Setup"></td><td class="c" data-label="Work"><input type="radio" name="sw${i}" data-sw="${i}" value="work" ${!su?"checked":""} aria-label="Work"></td>
-     <td class="c" data-label="Machine"><input type="checkbox" data-ml="${i}" value="machine" ${g.machine?"checked":""} aria-label="Machine"></td><td class="c" data-label="Labor"><input type="checkbox" data-ml="${i}" value="labor" ${g.labor?"checked":""} aria-label="Labor"></td></tr>`; }).join("");
-  return `<table class="grid"><thead><tr><th></th><th>Task</th><th class="c">Setup</th><th class="c">Work</th><th class="c">Machine</th><th class="c">Labor</th></tr></thead><tbody>${rows}</tbody></table>${chart()}`; }
-function chart(){ const t=D.tasks, v=t.map(x=>num(x.cycletime)), sum=v.reduce((a,b)=>a+b,0);
-  if(!sum) return `<div class="chart"><h3>Activity chart</h3><div class="hint">Enter cycle times on the Cycle / Value tab to see the chart.</div></div>`;
-  const bh=16,gap=5,lw=40,W=760,H=t.length*(bh+gap)+34, col={VA:"#2e8b3e",NVA:"#9aa3ae",TQC:"#1d5fae"}; let start=0;
-  const bars=t.map((x,i)=>{ const w=v[i]/sum*(W-lw-70), y=i*(bh+gap)+4; const r=`<text x="${lw-8}" y="${y+12}" text-anchor="end" font-size="11" fill="currentColor" opacity=".7">${i+1}</text><rect x="${lw+start}" y="${y}" width="${v[i]?Math.max(w,2):0}" height="${bh}" rx="2" fill="${col[valueClass(x)]}"><title>Step ${i+1}: ${v[i]}</title></rect>${v[i]?`<text x="${lw+start+w+4}" y="${y+12}" font-size="10" fill="currentColor" opacity=".7">${v[i]}</text>`:""}`; start+=w; return r; }).join("");
-  const leg=Object.entries(col).map(([k,c],j)=>`<rect x="${lw+j*150}" y="${H-16}" width="10" height="10" fill="${c}"/><text x="${lw+j*150+14}" y="${H-7}" font-size="11" fill="currentColor">${VALUE_NAMES[k]}</text>`).join("");
-  return `<div class="chart"><h3>Activity chart (running cycle time)</h3><div style="overflow-x:auto"><svg width="100%" viewBox="0 0 ${W} ${H}" style="max-width:${W}px;min-width:520px">${bars}${leg}</svg></div></div>`; }
-function renderWaste(){ const tot=Object.fromEntries(WASTES.map(w=>[w,0]));
-  const rows=D.tasks.map((t,i)=>`<tr ${rowA(i)}>${numCell(i)}<td class="ro">${esc(t.caption)}</td>${WASTES.map(w=>{ if(t.wastes[w]) tot[w]++; return `<td class="c" data-label="${WASTE_NAMES[w]}"><input type="checkbox" data-waste="${i}" value="${w}" ${t.wastes[w]?"checked":""} aria-label="${WASTE_NAMES[w]}"></td>`; }).join("")}</tr>`).join("");
-  return `<div style="overflow-x:auto"><table class="grid"><thead><tr><th></th><th>Task</th>${WASTES.map(w=>`<th class="c">${WASTE_NAMES[w]}</th>`).join("")}</tr></thead><tbody>${rows}</tbody><tfoot><tr><td></td><td>Flagged</td>${WASTES.map(w=>`<td class="c">${tot[w]||""}</td>`).join("")}</tr></tfoot></table></div>`; }
+  if(!D.tasks.length) return `<div class="panel"><div class="empty"><div>No steps yet.</div><div class="row"><button class="lbtn primary" data-act="add">+ Add a step</button><button class="lbtn" data-act="open">Open a .soe file</button></div></div></div>`;
+  const opt=(list,v,lab=x=>x)=>list.map(x=>`<option value="${esc(x)}" ${x===v?"selected":""}>${esc(lab(x))}</option>`).join("");
+  return `<div class="cards">${D.tasks.map((t,i)=>{ const has=t.image_id&&D.images[t.image_id], qt=t.tasktype==="Quality";
+    return `<article class="scard ${sel.has(i)?"sel":""}" data-row="${i}" aria-label="Step ${i+1}">
+    <div class="snum"><button class="selbtn" data-sel="${i}" aria-label="Select step ${i+1}" title="Select. Ctrl or Shift for several.">${shapeSVG(t.tasktype,i+1,40,isQ(t))}</button><span class="handle" draggable="true" data-drag="${i}" title="Drag to reorder" aria-hidden="true">⋮⋮</span></div>
+    <div class="thumb ${has?"has":""}" data-img="${i}" tabindex="0" role="button" aria-label="${has?"Change":"Add"} picture for step ${i+1}" title="Click, drop or paste a picture">${has?`<img src="${imgURL(t.image_id)}" alt=""><button class="x" data-rmimg="${i}" aria-label="Remove picture from step ${i+1}">×</button>`:"＋ Add photo"}</div>
+    <div class="sbody"><textarea class="cap" id="cap${i}" spellcheck="true" data-f="caption" data-i="${i}" aria-label="Task for step ${i+1}" placeholder="What to do in this step">${esc(t.caption)}</textarea>
+      <div class="meta">
+        <span class="pw"><span class="dot" style="background:${typeDot(t.tasktype)}"></span><select class="pill" id="tt${i}" data-f="tasktype" data-i="${i}" aria-label="Step type for step ${i+1}">${opt(TASK_TYPES,t.tasktype)}</select></span>
+        <label class="tog q" title="${qt?"This step is already a Quality step.":"Also integral to quality. It prints inside a Quality octagon."}"><input type="checkbox" data-q="${i}" ${t.quality||qt?"checked":""} ${qt?"disabled":""}> Integral to quality</label>
+        <select class="pill" id="pp${i}" data-f="pics_per_page" data-i="${i}" aria-label="Page layout for step ${i+1}" title="Page layout in the PDF">${opt(PAGE_TYPES,t.pics_per_page,pageLabel)}</select>
+        <label class="pill-lbl">Text <select class="pill" id="fs${i}" data-f="font_size" data-i="${i}" aria-label="Text size for step ${i+1}">${[8,9,10,11,12,13,14].map(x=>`<option value="${x}" ${String(x)===String(t.font_size)?"selected":""}>${x} pt</option>`).join("")}</select></label>
+        ${t.image_title?`<span class="imgname" title="${esc(t.image_path||t.image_title)}">${esc(t.image_title)}</span>`:""}
+      </div></div>
+    <button class="kebab" data-stepmenu="${i}" aria-haspopup="menu" aria-expanded="false" aria-label="Step ${i+1} actions" title="Move, insert, duplicate or delete">⋯</button>
+  </article>`; }).join("")}<button class="addcard rowtool" data-act="add">＋ Add step</button></div>`; }
+/* ---- Analysis: cycle time, value, activity and wastes on one screen ---- */
+function anTotals(){ let tot=0,va=0,tq=0; D.tasks.forEach(t=>{ const c=num(t.cycletime); tot+=c; if(t.value_added) va+=c; else if(t.tqc) tq+=c; }); return {tot,va,tq,nva:tot-va-tq}; }
+const pct=(a,b)=>b?Math.round(a/b*100)+"%":"";
+function anSummary(){ const {tot,va,tq,nva}=anTotals();
+  return `<div class="kpi"><small>Total time</small><b>${tot||"–"}</b></div>
+    <div class="kpi"><small>${VALUE_NAMES.VA}</small><b>${va}</b><span>${pct(va,tot)}</span></div>
+    <div class="kpi"><small>${VALUE_NAMES.NVA}</small><b>${nva}</b><span>${pct(nva,tot)}</span></div>
+    <div class="kpi"><small>${VALUE_NAMES.TQC}</small><b>${tq}</b><span>${pct(tq,tot)}</span></div>`; }
+function anChart(){ const t=D.tasks, v=t.map(x=>num(x.cycletime)), sum=v.reduce((a,b)=>a+b,0);
+  if(!sum) return `<h3>Where the time goes</h3><div class="hint">Type a cycle time for each step to see where the time goes.</div>`;
+  const col={VA:"var(--va)",NVA:"var(--nva)",TQC:"var(--cv)"}; let start=0;
+  return `<h3>Where the time goes</h3>`+t.map((x,i)=>{ const off=start/sum*100, w=v[i]/sum*100; start+=v[i];
+    return `<div class="crow"><span class="cn">${i+1}</span><div class="ctrack"><span style="flex:none;width:${off.toFixed(2)}%"></span>${v[i]?`<span class="cbar" style="width:max(2px,${w.toFixed(2)}%);background:${col[valueClass(x)]}"></span><span class="clab">${v[i]} · ${VALUE_NAMES[valueClass(x)]}</span>`:`<span class="clab">no time</span>`}</div></div>`; }).join(""); }
+function wasteLine(){ const c=WASTES.map(w=>[w,D.tasks.filter(t=>t.wastes[w]).length]).filter(x=>x[1]);
+  return c.length?`Wastes flagged: ${c.map(([w,n])=>`${WASTE_NAMES[w]} ${n}`).join(" · ")}`:"No wastes flagged yet. Use ＋ Add in the Wastes column."; }
+function renderAn(){
+  if(!D.tasks.length) return `<div class="panel"><div class="empty"><div>No steps yet.</div><div class="row"><button class="lbtn primary" data-act="add">+ Add a step</button></div></div></div>`;
+  const rows=D.tasks.map((t,i)=>{ const v=valueClass(t), su=t.setup.selected&&!t.work.selected, g=su?t.setup:t.work, ws=WASTES.filter(w=>t.wastes[w]);
+    return `<tr ${rowA(i)}>${numCell(i)}<td class="ro" data-label="Task">${esc(t.caption)||'<span class="hint">(no task text)</span>'}</td>
+      <td data-label="Time"><input class="f t" id="ct${i}" data-f="cycletime" data-i="${i}" value="${esc(t.cycletime)}" inputmode="decimal" aria-label="Cycle time for step ${i+1}"></td>
+      <td data-label="Value"><span class="seg" role="radiogroup" aria-label="Value for step ${i+1}">${["VA","NVA","TQC"].map(k=>`<label class="v${k}"><input type="radio" name="v${i}" data-value="${i}" value="${k}" ${v===k?"checked":""}><span>${VALUE_NAMES[k]}</span></label>`).join("")}</span></td>
+      <td data-label="Activity"><span class="seg" role="radiogroup" aria-label="Activity for step ${i+1}"><label><input type="radio" name="sw${i}" data-sw="${i}" value="setup" ${su?"checked":""}><span>Setup</span></label><label><input type="radio" name="sw${i}" data-sw="${i}" value="work" ${!su?"checked":""}><span>Work</span></label></span></td>
+      <td data-label="Done by" style="white-space:nowrap"><label class="tog"><input type="checkbox" data-ml="${i}" value="machine" ${g.machine?"checked":""}> Machine</label> <label class="tog"><input type="checkbox" data-ml="${i}" value="labor" ${g.labor?"checked":""}> Labor</label></td>
+      <td data-label="Wastes"><div class="wl">${ws.map(w=>`<button class="wchip" data-unwaste="${i}" data-w="${w}" aria-label="Remove ${WASTE_NAMES[w]} from step ${i+1}" title="Remove">${WASTE_NAMES[w]} ×</button>`).join("")}<button class="wadd" data-wastemenu="${i}" aria-haspopup="menu" aria-expanded="false" aria-label="Wastes for step ${i+1}">＋ Add</button></div></td></tr>`; }).join("");
+  return `<div class="an"><div class="sum" id="anSum">${anSummary()}</div>
+    <div class="panel antab"><table class="grid"><thead><tr><th></th><th>Task</th><th>Time</th><th>Value</th><th>Activity</th><th>Done by</th><th>Wastes</th></tr></thead><tbody>${rows}</tbody></table><div class="anfoot" id="anWaste">${wasteLine()}</div></div>
+    <div class="panel tchart" id="anChart">${anChart()}</div></div>`; }
 function esState(t){ const es=(t.caption_es||"").trim(); if(!es) return "miss"; if((t.caption_es_src||"")!==(t.caption||"").trim()) return "stale"; return lostTerms(t).length?"terms":"ok"; }
 function lostTerms(t){ const es=" "+(t.caption_es||"")+" "; return termsIn(t.caption).filter(x=>!termRe(x).test(es)); }
 function renderEs(){ const T=D.tasks, st=T.map(esState), n=k=>st.filter(x=>x===k).length; const he=D.header_es||{};
-  return `<div style="padding:14px 16px;display:grid;gap:12px">
+  return `<div class="panel" style="padding:14px 16px;display:grid;gap:12px">
    <div class="revbar"><button class="lbtn primary" data-act="escopy">Copy for Copilot translation</button><button class="lbtn" data-act="espaste">Paste Spanish from Copilot…</button><button class="lbtn" data-act="pdfes">Create Spanish PDF</button>
      <span class="hint">${n("ok")+n("terms")} of ${T.length} steps translated${n("terms")?` · <b style="color:#a15c00">${n("terms")} with boat terms translated instead of kept in English</b>`:""}${n("stale")?` · <b style="color:var(--danger)">${n("stale")} changed in English since translating</b>`:""}${n("miss")?` · ${n("miss")} missing (the PDF keeps their English)`:""}</span></div>
    <details class="card"${Object.values(he).some(v=>(v||"").trim())?"":" open"}><summary><b>Header in Spanish</b> <span class="hint">Left blank, a box keeps its English text.</span></summary>
@@ -1011,7 +1132,7 @@ function renderReview(){ const h=D.header, T=D.tasks;
   const counts=TASK_TYPES.map(k=>[k,T.filter(t=>t.tasktype===k).length]).concat([["Integral to quality",T.filter(isQ).length]]).filter(x=>x[1]);
   const total=T.reduce((a,t)=>a+num(t.cycletime),0), noPic=T.map((t,i)=>(!t.image_id||!D.images[t.image_id])?i+1:0).filter(Boolean);
   const meta=[h.udc4,h.udc3,h.udc5,h.udc6].filter(x=>(x||"").trim());
-  return `<article class="review">
+  return `<article class="review panel">
     <div class="revbar"><button class="lbtn primary" data-act="revcopy">Copy for Copilot review</button><button class="lbtn" data-act="revsave">Save as text file</button>
       <span class="hint">Copilot can't read this page when it's opened from your own drive. Copy it and paste into Copilot, or attach the text file.</span></div>
     <h2>${esc(h.udc1||D.name||"Untitled procedure")}</h2>
@@ -1029,14 +1150,14 @@ function renderOpt(){ const d=D;
     <div class="fr"><label>Logo</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${d.logo_id&&d.images[d.logo_id]?`<img class="logoprev" src="${imgURL(d.logo_id)}" alt="Logo">`:'<span class="hint">None</span>'}<button class="lbtn" data-act="logo">Choose…</button>${d.logo_id?'<button class="lbtn danger" data-act="nologo">Remove</button>':""}</div></div>
     <label class="chk"><input type="checkbox" id="o_rem" data-st="remember_header" ${ST.remember_header?"checked":""}> Remember header for new files</label></div>
   <div class="card"><h3>System</h3>
-    <div class="fr"><label for="o_ppp">Pictures per page</label><div style="display:flex;gap:6px;flex-wrap:wrap"><select class="s" id="o_ppp" data-o="default_ppp">${PAGE_TYPES.map(x=>`<option ${x===d.default_ppp?"selected":""}>${x}</option>`).join("")}</select><button class="lbtn" data-act="pppall">Apply to all rows</button></div></div>
+    <div class="fr"><label for="o_ppp">Default page layout</label><div style="display:flex;gap:6px;flex-wrap:wrap"><select class="s" id="o_ppp" data-o="default_ppp">${PAGE_TYPES.map(x=>`<option value="${x}" ${x===d.default_ppp?"selected":""}>${pageLabel(x)}</option>`).join("")}</select><button class="lbtn" data-act="pppall">Apply to all steps</button></div></div>
     <div class="fr"><label for="o_q">Image resize quality</label>${coarsePointer()
       ? `<span class="hint" style="align-self:center">Full resolution — photos added on this device are kept at full size (no downscaling), since the in-app capture may be the only copy.</span>`
       : `<select class="s" id="o_q" data-st="image_quality">${Object.keys(QUALITY_PX).map(x=>`<option ${x===ST.image_quality?"selected":""}>${x}</option>`).join("")}</select>`}</div>
     <label class="chk"><input type="checkbox" id="o_b" data-o="borders" ${d.borders?"checked":""}> Color borders</label>
     <label class="chk"><input type="checkbox" id="o_s" data-o="shapes" ${d.shapes?"checked":""}> Shapes around step numbers</label>
     <label class="chk"><input type="checkbox" id="o_a" data-o="advanced" ${d.advanced?"checked":""}> Advanced analyzer</label>
-    <label class="chk"><input type="checkbox" id="o_t" data-o="soe_title" ${d.soe_title?"checked":""}> Title in SOE</label>
+    <label class="chk"><input type="checkbox" id="o_t" data-o="soe_title" ${d.soe_title?"checked":""}> Title on the Analysis PDF</label>
     <label class="chk"><input type="checkbox" id="o_d" data-st="add_date" ${ST.add_date?"checked":""}> Add current date to PDF footer</label>
     <label class="chk"><input type="checkbox" id="o_ppe" data-st="ppe_first_step" ${ST.ppe_first_step?"checked":""}> First step is Required PPE (new files)</label>
     <p class="hint">PDFs use Helvetica, like the original's default.</p></div>
@@ -1050,8 +1171,12 @@ function renderOpt(){ const d=D;
 
 /* ===================================================================== events */
 document.addEventListener("click",e=>{
+  const mb=e.target.closest("[data-menu]"); if(mb){ toolbarMenu(mb); return; }
+  const sm=e.target.closest("[data-stepmenu]"); if(sm){ stepMenu(sm); return; }
+  const wm=e.target.closest("[data-wastemenu]"); if(wm){ wasteMenu(wm); return; }
+  const uw=e.target.closest("[data-unwaste]"); if(uw){ const i=+uw.dataset.unwaste; D.tasks[i].wastes[uw.dataset.w]=false; changed(true); setTimeout(()=>{ const b=$(`[data-wastemenu="${i}"]`); b&&b.focus(); },0); return; }
   const n=e.target.closest("[data-sel]");
-  if(n){ const i=+n.dataset.sel; if(e.shiftKey){ sel=new Set(); for(let k=Math.min(lastClick,i);k<=Math.max(lastClick,i);k++) sel.add(k); } else if(e.ctrlKey||e.metaKey){ sel.has(i)?sel.delete(i):sel.add(i); if(!sel.size) sel.add(i); } else sel=new Set([i]); lastClick=i; render(); return; }
+  if(n){ const i=+n.dataset.sel; if(e.shiftKey){ sel=new Set(); for(let k=Math.min(lastClick,i);k<=Math.max(lastClick,i);k++) sel.add(k); } else if(e.ctrlKey||e.metaKey){ sel.has(i)?sel.delete(i):sel.add(i); if(!sel.size) sel.add(i); } else sel=new Set([i]); lastClick=i; markSel(); return; }
   const rm=e.target.closest("[data-rmimg]"); if(rm){ e.stopPropagation(); const t=D.tasks[+rm.dataset.rmimg]; t.image_id=t.image_title=t.image_path=""; changed(true); return; }
   const im=e.target.closest("[data-img]"); if(im){ pickImageFor=+im.dataset.img; $("#imgInput").value=""; $("#imgInput").click(); return; }
   const a=e.target.closest("[data-act]"); if(a){ act(a.dataset.act,a); return; }
@@ -1063,6 +1188,7 @@ document.addEventListener("keydown",e=>{
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){ e.preventDefault(); doSave(e.shiftKey); }
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="o"){ e.preventDefault(); doOpen(); }
   if(e.key==="Escape"&&!$("#modal").hidden){ $("#modal").hidden=true; }
+  if(e.key==="Escape"&&document.querySelector(".menu")){ closeMenus(true); }
   // Tab in a Task box moves to the next step's Task box; on the last step it adds a new empty step.
   // Shift+Tab goes back one step.
   if(e.key==="Tab"&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&e.target.classList&&e.target.classList.contains("cap")&&tab==="vi"&&!coarsePointer()){   // desktop only
@@ -1071,12 +1197,13 @@ document.addEventListener("keydown",e=>{
     e.preventDefault();
     if(j>=T.length){ const cur=T[i]; if(!(cur.caption||"").trim()&&!cur.image_id){ toast("Fill in this step before adding another"); return; }
       const t=blankTask(cur.pics_per_page||D.default_ppp); t.font_size=cur.font_size; T.push(t); sel=new Set([j]); lastClick=j; changed(true); }
-    const c=$("#cap"+j); if(c){ c.focus(); c.setSelectionRange(c.value.length,c.value.length); c.closest("tr").scrollIntoView({block:"nearest"}); }
+    const c=$("#cap"+j); if(c){ c.focus(); c.setSelectionRange(c.value.length,c.value.length); c.closest(".scard").scrollIntoView({block:"nearest"}); }
   }
 });
-document.addEventListener("focusin",e=>{ const tr=e.target.closest&&e.target.closest("tr[data-i]"); if(!tr) return; const i=+tr.dataset.i; if(sel.size===1&&sel.has(i)) return; sel=new Set([i]); lastClick=i; document.querySelectorAll("tr[data-i]").forEach(r=>r.classList.toggle("sel",+r.dataset.i===i)); renderHeader(); });
+document.addEventListener("focusin",e=>{ const r=e.target.closest&&e.target.closest("[data-row]"); if(!r||e.target.closest("[data-sel]")) return; const i=+r.dataset.row; if(sel.size===1&&sel.has(i)) return; sel=new Set([i]); lastClick=i; markSel(); });
 document.addEventListener("input",e=>{ const el=e.target;
-  if(el.dataset.f!=null){ const t=D.tasks[+el.dataset.i]; t[el.dataset.f]=el.value; changed(el.dataset.f==="tasktype"); }
+  if(el.dataset.f!=null){ const t=D.tasks[+el.dataset.i]; t[el.dataset.f]=el.value; changed(el.dataset.f==="tasktype");
+    if(el.dataset.f==="cycletime"&&tab==="an"){ $("#anSum").innerHTML=anSummary(); $("#anChart").innerHTML=anChart(); } }
   else if(el.dataset.h!=null){ D.header[el.dataset.h]=el.value; changed(); }
   else if(el.dataset.hes!=null){ (D.header_es||(D.header_es={}))[el.dataset.hes]=el.value; changed(); }
   else if(el.dataset.es!=null){ const t=D.tasks[+el.dataset.es]; t.caption_es=el.value; t.caption_es_src=(t.caption||"").trim(); changed(); const chip=el.closest("tr")?.querySelector(".chip"); if(chip){ chip.className="chip "+(el.value.trim()?"ok":"miss"); chip.textContent=el.value.trim()?"Translated":"Missing"; } }
@@ -1099,8 +1226,17 @@ async function setImages(i,files){ files=[...files].filter(f=>f&&f.type&&f.type.
 $("#imgInput").addEventListener("change",e=>{ if(pickImageFor>=0) setImages(pickImageFor,e.target.files); });
 $("#logoInput").addEventListener("change",async e=>{ const f=e.target.files[0]; if(!f) return; D.logo_id=await addImage(f); D.logo_path=f.name; changed(true); });
 $("#soeInput").addEventListener("change",e=>{ const f=e.target.files[0]; if(f) openFromFile(f); });
-document.addEventListener("dragover",e=>{ if(e.dataTransfer&&[...e.dataTransfer.types].includes("Files")){ e.preventDefault(); const t=e.target.closest&&e.target.closest(".thumb"); document.querySelectorAll(".thumb.drop").forEach(x=>x!==t&&x.classList.remove("drop")); t&&t.classList.add("drop"); } });
-document.addEventListener("drop",async e=>{ if(!e.dataTransfer||!e.dataTransfer.files.length) return; e.preventDefault(); const files=[...e.dataTransfer.files]; document.querySelectorAll(".thumb.drop").forEach(x=>x.classList.remove("drop"));
+let dragFrom=-1;
+document.addEventListener("dragstart",e=>{ const h=e.target.closest&&e.target.closest("[data-drag]"); if(!h) return; dragFrom=+h.dataset.drag; e.dataTransfer.effectAllowed="move"; try{ e.dataTransfer.setData("text/plain","step "+(dragFrom+1)); }catch(_){}
+  const card=h.closest(".scard"); if(card&&e.dataTransfer.setDragImage) e.dataTransfer.setDragImage(card,24,24); });
+document.addEventListener("dragend",()=>{ dragFrom=-1; document.querySelectorAll(".scard.dragover").forEach(x=>x.classList.remove("dragover","below")); });
+document.addEventListener("dragover",e=>{ if(dragFrom>=0){ const c=e.target.closest&&e.target.closest(".scard"); document.querySelectorAll(".scard.dragover").forEach(x=>x!==c&&x.classList.remove("dragover","below")); if(c){ e.preventDefault(); const r=c.getBoundingClientRect(); c.classList.add("dragover"); c.classList.toggle("below",e.clientY>r.top+r.height/2); } return; }
+  if(e.dataTransfer&&[...e.dataTransfer.types].includes("Files")){ e.preventDefault(); const t=e.target.closest&&e.target.closest(".thumb"); document.querySelectorAll(".thumb.drop").forEach(x=>x!==t&&x.classList.remove("drop")); t&&t.classList.add("drop"); } });
+document.addEventListener("drop",async e=>{
+  if(dragFrom>=0){ e.preventDefault(); const c=e.target.closest&&e.target.closest(".scard"); const from=dragFrom; dragFrom=-1; document.querySelectorAll(".scard.dragover").forEach(x=>x.classList.remove("dragover","below")); if(!c) return;
+    let to=+c.dataset.row+(e.clientY>c.getBoundingClientRect().top+c.getBoundingClientRect().height/2?1:0); if(to>from) to--; if(to===from) return;
+    const [t]=D.tasks.splice(from,1); D.tasks.splice(to,0,t); sel=new Set([to]); lastClick=to; changed(true); toast(`Moved step ${from+1} to ${to+1}`); return; }
+  if(!e.dataTransfer||!e.dataTransfer.files.length) return; e.preventDefault(); const files=[...e.dataTransfer.files]; document.querySelectorAll(".thumb.drop").forEach(x=>x.classList.remove("drop"));
   const soe=files.find(f=>/\.soe$/i.test(f.name)); if(soe){ if(await confirmDiscard()) openFromFile(soe); return; }
   const th=e.target.closest&&e.target.closest(".thumb"); if(th) setImages(+th.dataset.img,files); else if(tab==="vi"){ D.tasks.push(blankTask(D.default_ppp)); setImages(D.tasks.length-1,files); } });
 document.addEventListener("paste",e=>{ const item=[...(e.clipboardData?.items||[])].find(x=>x.type.startsWith("image/")); if(item&&tab==="vi"&&$("#modal").hidden){ e.preventDefault(); setImages([...sel][0]??0,[item.getAsFile()]); } });
@@ -1123,18 +1259,19 @@ async function act(a,btn){ const T=D.tasks;
     case "backupimg": backupPhotos(); break;
     case "ppe": ppeBuilder(); break;
     case "copilot": copilotMenu(btn); break;
+    case "csv": exportCsv(); break;
     case "install": pwaInstall(); break;
-    case "add": T.push(blankTask(D.default_ppp)); sel=new Set([T.length-1]); if(tab==="opt") tab="vi"; changed(true); setTimeout(()=>{$("#main").scrollTop=1e9; const c=$("#cap"+(T.length-1)); c&&c.focus();},0); break;
+    case "add": { const prev=T[T.length-1], t=blankTask((prev&&prev.pics_per_page)||D.default_ppp); if(prev) t.font_size=prev.font_size; T.push(t); sel=new Set([T.length-1]); if(tab!=="an") tab="vi"; changed(true); setTimeout(()=>{$("#main").scrollTop=1e9; const c=$("#cap"+(T.length-1))||$("#ct"+(T.length-1)); c&&c.focus();},0); break; }
     case "insert": { const i=sorted()[0]??0; T.splice(i,0,blankTask(D.default_ppp)); sel=new Set([i]); changed(true); break; }
     case "dup": { const ix=sorted(); const cp=ix.map(i=>JSON.parse(JSON.stringify(T[i]))); const at=ix[ix.length-1]+1; T.splice(at,0,...cp); sel=new Set(cp.map((_,k)=>at+k)); changed(true); break; }
     case "del": { const ix=sorted(); if(!ix.length) return; const removed=ix.map(i=>[i,T[i]]); ix.slice().reverse().forEach(i=>T.splice(i,1)); sel=new Set([Math.max(0,Math.min(ix[0],T.length-1))]); changed(true);
-      undoDel=removed; toastUndo(`Deleted ${removed.length} row${removed.length>1?"s":""}`); break; }
+      undoDel=removed; toastUndo(`Deleted ${removed.length} step${removed.length>1?"s":""}`); break; }
     case "undo": if(undoDel){ undoDel.forEach(([i,t])=>D.tasks.splice(i,0,t)); sel=new Set(undoDel.map(x=>x[0])); undoDel=null; changed(true); toast("Restored"); } break;
     case "up": { const ix=sorted(); if(ix[0]<=0) return; ix.forEach(i=>[T[i-1],T[i]]=[T[i],T[i-1]]); sel=new Set(ix.map(i=>i-1)); changed(true); break; }
     case "down": { const ix=sorted().reverse(); if(ix[0]>=T.length-1) return; ix.forEach(i=>[T[i+1],T[i]]=[T[i],T[i+1]]); sel=new Set(ix.map(i=>i+1)); changed(true); break; }
     case "logo": $("#logoInput").value=""; $("#logoInput").click(); break;
     case "nologo": D.logo_id=""; D.logo_path=""; changed(true); break;
-    case "pppall": T.forEach(t=>t.pics_per_page=D.default_ppp); changed(true); toast("Applied to all rows"); break;
+    case "pppall": T.forEach(t=>t.pics_per_page=D.default_ppp); changed(true); toast("Applied to all steps"); break;
     case "revcopy": { const t=reviewText(); if(await copyText(t)) toast("Copied. Paste it into Copilot (Ctrl+V).",4000);
       else modal(`<h2>Copy for Copilot</h2><p>Select all (Ctrl+A) and copy (Ctrl+C):</p><textarea readonly>${esc(t)}</textarea><div class="acts"><button class="lbtn primary" data-x>Done</button></div>`,(d,c)=>{ d.querySelector("textarea").select(); d.querySelector("[data-x]").onclick=c; }); break; }
     case "revsave": { const base=(D.name||"untitled").replace(/\.soe$/i,""); const r=await saveBlob(base+" for Copilot.txt",new Blob(["\uFEFF"+reviewText().replace(/\n/g,"\r\n")],{type:"text/plain"}),[{description:"Text",accept:{"text/plain":[".txt"]}}]); if(r.status==="saved") toast("Saved "+r.name+". Attach it in Copilot.",4000); break; }
