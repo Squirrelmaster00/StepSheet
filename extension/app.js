@@ -656,7 +656,7 @@ function shapeSVG(kind,n,size=26,quality=false){ const m=size/2;
 function changed(re=false){ dirty=true; if(re) render(); else renderHeader(); scheduleDraft(); }
 function renderHeader(){
   $("#fname").innerHTML=esc(D.name||"untitled.soe")+(dirty?'<span class="dot" title="Unsaved changes" role="img" aria-label="Unsaved changes"></span>':"");
-  document.title=(dirty?"* ":"")+(D.name||"untitled.soe")+" - StepSheet";
+  document.title="StepSheet - "+(D.name||"untitled.soe")+(dirty?" (unsaved)":"");   // app name first: browsers name "install page as app" after the title
   const t=D.tasks, counts={}; t.forEach(x=>counts[x.tasktype]=(counts[x.tasktype]||0)+1); const nq=t.filter(isQ).length; if(nq) counts["Integral to quality"]=nq; const total=t.reduce((a,x)=>a+num(x.cycletime),0);
   $("#status").innerHTML=`<span>${t.length} step${t.length===1?"":"s"}</span>`+Object.entries(counts).map(([k,v])=>`<span>${esc(k)} ${v}</span>`).join("")+(total?`<span>Total time ${total}</span>`:"")+
     (t.length?`<span>${sel.size>1?sel.size+" steps selected":"Step "+(([...sel][0]??0)+1)+" selected"}</span>`:"")+
@@ -842,7 +842,7 @@ function renderOpt(){ const d=D;
     ${Object.entries(flags).map(([k,l])=>`<label class="chk"><input type="checkbox" id="sec_${k}" data-sec="${k}" ${isT(d.security[k])?"checked":""}> Allow ${l}</label>`).join("")}</div>
   <div class="card"><h3>Colors</h3>${["Check","Work Content","Verify","Safety","Quality","Border"].map(k=>`<div class="fr"><label for="c_${k.replace(/ /g,"")}">${k}</label><div style="display:flex;gap:8px;align-items:center">${k!=="Border"?shapeSVG(k,null,22):""}<input type="color" id="c_${k.replace(/ /g,"")}" data-color="${k}" value="${color(k).toLowerCase()}"></div></div>`).join("")}
     <button class="lbtn" data-act="resetcolors">Reset colors</button></div></div>
-    <p class="hint" style="margin-top:12px">StepSheet build 31${"launchQueue" in window?" · can open .soe files from Windows":""}<br>
+    <p class="hint" style="margin-top:12px">StepSheet build 32${"launchQueue" in window?" · can open .soe files from Windows":""}<br>
       Last start: ${!("launchQueue" in window)?"this browser can't open files from Windows":!lastLaunch?"normal (the browser didn't start it as an app)":lastLaunch.files?`from a file (${esc(lastLaunch.names)})`:"as an app, but the browser passed no file"}</p>`; }
 
 /* ===================================================================== events */

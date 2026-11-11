@@ -21,7 +21,7 @@ ROOT = os.path.dirname(HERE)                         # repo root
 def R(*p): return os.path.join(ROOT, *p)
 def S(*p): return os.path.join(HERE, *p)
 
-CACHE = "stepsheet-v31"   # bump when the app code changes so installed PWAs refresh
+CACHE = "stepsheet-v32"   # bump when the app code changes so installed PWAs refresh
 
 widths = open(S("widths.json"), encoding="utf-8").read().strip()
 block = open(S("header-block.html"), encoding="utf-8").read().rstrip("\n")
@@ -43,9 +43,21 @@ def with_block(html):
 open(S("artifact.html"), "w", encoding="utf-8").write(src)
 
 # ---- single-file offline app: repo root + Python bundle (identical copies) ----
+import base64
+def png_uri(name): return "data:image/png;base64," + base64.b64encode(open(R(name), "rb").read()).decode()
+# The single-file copy has no manifest, so "Install page as app" falls back to these:
+# the app name (not the tab title) and real PNG icons (not a letter drawn from the title).
+APP_META = ('<meta name="application-name" content="StepSheet">'
+            '<meta name="apple-mobile-web-app-title" content="StepSheet">'
+            '<link rel="icon" type="image/png" sizes="192x192" href="' + png_uri("icon-192.png") + '">'
+            '<link rel="icon" type="image/png" sizes="512x512" href="' + png_uri("icon-512.png") + '">'
+            '<link rel="apple-touch-icon" href="' + png_uri("icon-180.png") + '">')
+# Opened from the website's single-file copy? Send it to the installable app at the same address.
+TO_APP = ('<script>if(location.protocol==="https:"&&/\\/StepSheet\\.html$/i.test(location.pathname))'
+          'location.replace(location.pathname.replace(/StepSheet\\.html$/i,"")+location.search+location.hash);</script>')
 head = ('<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
-        + FAVICON + '</head><body>')
+        + TO_APP + FAVICON + APP_META + '</head><body>')
 stepsheet_html = with_block(head + src + "</body></html>")
 open(R("StepSheet.html"), "w", encoding="utf-8").write(stepsheet_html)
 os.makedirs(R("python", "stepsheet", "static"), exist_ok=True)

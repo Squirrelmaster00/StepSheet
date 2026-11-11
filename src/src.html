@@ -1024,7 +1024,7 @@ function shapeSVG(kind,n,size=26,quality=false){ const m=size/2;
 function changed(re=false){ dirty=true; if(re) render(); else renderHeader(); scheduleDraft(); }
 function renderHeader(){
   $("#fname").innerHTML=esc(D.name||"untitled.soe")+(dirty?'<span class="dot" title="Unsaved changes" role="img" aria-label="Unsaved changes"></span>':"");
-  document.title=(dirty?"* ":"")+(D.name||"untitled.soe")+" - StepSheet";
+  document.title="StepSheet - "+(D.name||"untitled.soe")+(dirty?" (unsaved)":"");   // app name first: browsers name "install page as app" after the title
   const t=D.tasks, counts={}; t.forEach(x=>counts[x.tasktype]=(counts[x.tasktype]||0)+1); const nq=t.filter(isQ).length; if(nq) counts["Integral to quality"]=nq; const total=t.reduce((a,x)=>a+num(x.cycletime),0);
   $("#status").innerHTML=`<span>${t.length} step${t.length===1?"":"s"}</span>`+Object.entries(counts).map(([k,v])=>`<span>${esc(k)} ${v}</span>`).join("")+(total?`<span>Total time ${total}</span>`:"")+
     (t.length?`<span>${sel.size>1?sel.size+" steps selected":"Step "+(([...sel][0]??0)+1)+" selected"}</span>`:"")+
