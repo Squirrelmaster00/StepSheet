@@ -10,7 +10,7 @@
   See AI-USAGE.md. Independent implementation of the .soe format — not affiliated
   with, endorsed by, or derived from any other application. Brand names in the
   terminology glossary belong to their respective owners (identification only).
---><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="StepSheet"><meta name="application-name" content="StepSheet"><meta name="theme-color" content="#232d3b"><link rel="apple-touch-icon" href="icon-180.png"><link rel="icon" type="image/png" href="icon-192.png"><link rel="manifest" href="manifest.webmanifest"></head><body><title>StepSheet</title>
+--><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="StepSheet"><meta name="application-name" content="StepSheet"><meta name="theme-color" content="#232d3b"><link rel="apple-touch-icon" href="icon-180.png"><link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Crect%20width%3D%22100%22%20height%3D%22100%22%20rx%3D%2222%22%20fill%3D%22%23232d3b%22/%3E%3Cg%20fill%3D%22none%22%20stroke-width%3D%225.5%22%20stroke-linejoin%3D%22round%22%3E%0A%20%20%3Crect%20x%3D%2224%22%20y%3D%2224%22%20width%3D%2222%22%20height%3D%2222%22%20stroke%3D%22%23FFFF00%22/%3E%0A%20%20%3Ccircle%20cx%3D%2265%22%20cy%3D%2235%22%20r%3D%2211%22%20stroke%3D%22%235b8cff%22/%3E%0A%20%20%3Cpolygon%20points%3D%2235%2C53.5%2047.5%2C76%2022.5%2C76%22%20stroke%3D%22%23FF3B30%22/%3E%0A%20%20%3Cpolygon%20points%3D%2265%2C52.5%2077.5%2C65%2065%2C77.5%2052.5%2C65%22%20stroke%3D%22%23FF6347%22/%3E%3C/g%3E%3C/svg%3E"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"><link rel="manifest" href="manifest.webmanifest"></head><body><title>StepSheet</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
 /* Layout: one-screen work tool. Dark toolbar band, tab strip, scrolling step grid, status line. */
@@ -335,7 +335,11 @@ select.pill{border:1px solid var(--edge);border-radius:999px;background:var(--pa
 
 <header class="bar">
   <div class="bar-top">
-    <div class="brand"><svg class="mark" viewBox="0 0 20 20" aria-hidden="true"><rect x="1" y="1" width="8" height="8" fill="none" stroke="#FFFF00" stroke-width="2"/><circle cx="15" cy="5" r="4" fill="none" stroke="#5b8cff" stroke-width="2"/><polygon points="5,11 9,19 1,19" fill="none" stroke="#FF3B30" stroke-width="2" stroke-linejoin="round"/><polygon points="15,10.5 19.5,15 15,19.5 10.5,15" fill="none" stroke="#FF6347" stroke-width="2"/></svg>StepSheet</div>
+    <div class="brand"><svg class="mark" aria-hidden="true" viewBox="20 20 60 60"><g fill="none" stroke-width="6.5" stroke-linejoin="round">
+  <rect x="24" y="24" width="22" height="22" stroke="#FFFF00"/>
+  <circle cx="65" cy="35" r="11" stroke="#5b8cff"/>
+  <polygon points="35,53.5 47.5,76 22.5,76" stroke="#FF3B30"/>
+  <polygon points="65,52.5 77.5,65 65,77.5 52.5,65" stroke="#FF6347"/></g></svg>StepSheet</div>
     <div class="file" id="fname"></div>
   </div>
   <div class="tb" id="tb" role="toolbar" aria-label="StepSheet">

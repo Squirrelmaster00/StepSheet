@@ -21,10 +21,13 @@ ROOT = os.path.dirname(HERE)                         # repo root
 def R(*p): return os.path.join(ROOT, *p)
 def S(*p): return os.path.join(HERE, *p)
 
-CACHE = "stepsheet-v26"   # bump when the app code changes so installed PWAs refresh
+CACHE = "stepsheet-v27"   # bump when the app code changes so installed PWAs refresh
 
 widths = open(S("widths.json"), encoding="utf-8").read().strip()
 block = open(S("header-block.html"), encoding="utf-8").read().rstrip("\n")
+# Browser-tab icon, embedded so even the single-file copy carries it (made by src/icon/make_icons.js).
+from urllib.parse import quote
+FAVICON = '<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,' + quote(open(S("icon", "favicon.svg"), encoding="utf-8").read()) + '">'
 src = open(S("src.html"), encoding="utf-8").read().replace("__WIDTHS__", widths)
 
 
@@ -42,7 +45,7 @@ open(S("artifact.html"), "w", encoding="utf-8").write(src)
 # ---- single-file offline app: repo root + Python bundle (identical copies) ----
 head = ('<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
-        '</head><body>')
+        + FAVICON + '</head><body>')
 stepsheet_html = with_block(head + src + "</body></html>")
 open(R("StepSheet.html"), "w", encoding="utf-8").write(stepsheet_html)
 os.makedirs(R("python", "stepsheet", "static"), exist_ok=True)
@@ -76,7 +79,8 @@ pwa_head = ('<!doctype html><html lang="en"><head>'
             '<meta name="application-name" content="StepSheet">'
             '<meta name="theme-color" content="#232d3b">'
             '<link rel="apple-touch-icon" href="icon-180.png">'
-            '<link rel="icon" type="image/png" href="icon-192.png">'
+            + FAVICON +
+            '<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">'
             '<link rel="manifest" href="manifest.webmanifest">'
             '</head><body>')
 sw_reg = ("\n<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){"
