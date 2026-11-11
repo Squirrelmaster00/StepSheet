@@ -489,9 +489,22 @@ function serializeSoe(d){
 }
 
 /* ===================================================================== images */
-const urlCache=new Map();
-function imgURL(id){ if(!id||!D.images[id]) return ""; let u=urlCache.get(id); if(!u){ u=URL.createObjectURL(new Blob([b64ToBytes(D.images[id])],{type:"image/jpeg"})); urlCache.set(id,u);} return u; }
-function clearURLs(){ for(const u of urlCache.values()) URL.revokeObjectURL(u); urlCache.clear(); pdfImgCache.clear(); }
+// On-screen pictures use small preview copies so a long document doesn't hold every
+// full-size photo decoded in memory. D.images keeps the originals, and the PDF, the
+// .soe file and backups always read from D.images, never from these previews.
+const PREVIEW_PX=480, prevCache=new Map(), prevPending=new Set(); let prevQueue=Promise.resolve();
+function imgURL(id){ if(!id||!D.images[id]) return ""; const u=prevCache.get(id); if(u) return u; queuePreview(id); return ""; }
+function imgTag(id,cls,alt=""){ const u=imgURL(id); return `<img${cls?` class="${cls}"`:""} data-pid="${id}"${u?` src="${u}"`:""} alt="${alt}">`; }
+function queuePreview(id){ if(prevPending.has(id)) return; prevPending.add(id);
+  prevQueue=prevQueue.then(async()=>{ const b64=D.images[id]; if(!b64) return; let u;
+    try{ const bytes=await toJpeg(new Blob([b64ToBytes(b64)],{type:"image/jpeg"}),PREVIEW_PX,0.8); u=URL.createObjectURL(new Blob([bytes],{type:"image/jpeg"})); }
+    catch(e){ u=URL.createObjectURL(new Blob([b64ToBytes(b64)],{type:"image/jpeg"})); }
+    if(D.images[id]!==b64){ URL.revokeObjectURL(u); return; }
+    prevCache.set(id,u); document.querySelectorAll(`img[data-pid="${id}"]`).forEach(im=>{ im.src=u; });
+  }).catch(()=>{}).finally(()=>prevPending.delete(id)); }
+function sweepPreviews(){ if(!prevCache.size) return; const used=new Set(D.tasks.map(t=>t.image_id)); used.add(D.logo_id);
+  for(const [id,u] of prevCache) if(!D.images[id]||!used.has(id)){ URL.revokeObjectURL(u); prevCache.delete(id); } } // a removed photo's preview is freed; it rebuilds if undo brings it back
+function clearURLs(){ for(const u of prevCache.values()) URL.revokeObjectURL(u); prevCache.clear(); pdfImgCache.clear(); }
 async function toJpeg(blob, maxPx, q=0.85){ // decode any picture, shrink if needed, re-encode as JPEG
   const bmp=await createImageBitmap(blob,{imageOrientation:"from-image"});
   let w=bmp.width,h=bmp.height; if(maxPx && Math.max(w,h)>maxPx){ const k=maxPx/Math.max(w,h); w=Math.round(w*k); h=Math.round(h*k); }
@@ -976,7 +989,7 @@ function reviewPaste(r){
   const srcOf=(s,i)=>{ let a=(s.src&&s.src.length)?s.src.map(n=>n-1):[i]; return a.filter(j=>j>=0&&j<old.length); };
   const rows=r.steps.map((s,i)=>{ const si=srcOf(s,i);
     const now=si.map(j=>(old[j].caption||"").replace(/\s+/g," ").trim()).filter(Boolean);
-    const o0=si.length?old[si[0]]:null; const img=(o0&&o0.image_id&&D.images[o0.image_id])?imgURL(o0.image_id):"";
+    const o0=si.length?old[si[0]]:null; const img=(o0&&o0.image_id&&D.images[o0.image_id])?o0.image_id:"";
     const label=si.length>1?`bundles steps ${si.map(j=>j+1).join(", ")}`:(si.length===1?`from step ${si[0]+1}`:"new step");
     const typeChg=(si.length===1&&old[si[0]].tasktype!==s.type)?` · ${esc(old[si[0]].tasktype)} &rarr; ${esc(s.type)}`:"";
     const changed=now.join(" ")!==(s.caption||"").trim()||!!typeChg||si.length!==1;
@@ -988,7 +1001,7 @@ function reviewPaste(r){
         ${w.now.length?`<div class="revnow"><span class="rl">Now</span>${esc(w.now.join("   /   "))}</div>`:`<div class="revnow"><span class="rl">Now</span><i class="hint">no original — brand-new step</i></div>`}
         <div class="revnew"><span class="rl">VWI</span>${esc(w.s.caption)}</div>
       </div>
-      ${w.img?`<img class="revthumb" src="${w.img}" alt="">`:`<span class="revthumb nopic">no photo</span>`}
+      ${w.img?`${imgTag(w.img,"revthumb")}`:`<span class="revthumb nopic">no photo</span>`}
     </div>`).join("");
   modal(`<h2>Review reformatted steps</h2>
     <p class="hint">Checked rows get the new VWI wording. Uncheck any step to keep it exactly as it is now. Photos stay with their step.</p>
@@ -1040,6 +1053,7 @@ function renderHeader(){
     (lastDraft?`<span title="If this page is reloaded or closed, it reopens with this work.">Kept in this browser ${new Date(lastDraft).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}</span>`:"");
 }
 function render(){
+  sweepPreviews();
   if(!["vi","an","es","review","opt"].includes(tab)) tab="vi";
   if(coarsePointer()&&(tab==="an"||tab==="es")) tab="vi";
   document.querySelectorAll("#tabs button").forEach(b=>{ const on=b.dataset.tab===tab; b.classList.toggle("on",on); on?b.setAttribute("aria-current","page"):b.removeAttribute("aria-current"); });
@@ -1068,7 +1082,7 @@ function renderVI(){
   return `${stepBar()}<div class="cards">${D.tasks.map((t,i)=>{ const has=t.image_id&&D.images[t.image_id], qt=t.tasktype==="Quality";
     return `<article class="scard ${sel.has(i)?"sel":""}" data-row="${i}" aria-label="Step ${i+1}">
     <div class="snum"><button class="selbtn" data-sel="${i}" aria-label="Select step ${i+1}" title="Select. Ctrl or Shift for several.">${shapeSVG(t.tasktype,i+1,40,isQ(t))}</button><span class="handle" draggable="true" data-drag="${i}" title="Drag to reorder" aria-hidden="true">⋮⋮</span></div>
-    <div class="thumb ${has?"has":""}" data-img="${i}" tabindex="0" role="button" aria-label="${has?"Change":"Add"} picture for step ${i+1}" title="Click, drop or paste a picture">${has?`<img src="${imgURL(t.image_id)}" alt=""><button class="x" data-rmimg="${i}" aria-label="Remove picture from step ${i+1}">×</button>`:"＋ Add photo"}</div>
+    <div class="thumb ${has?"has":""}" data-img="${i}" tabindex="0" role="button" aria-label="${has?"Change":"Add"} picture for step ${i+1}" title="Click, drop or paste a picture">${has?`${imgTag(t.image_id)}<button class="x" data-rmimg="${i}" aria-label="Remove picture from step ${i+1}">×</button>`:"＋ Add photo"}</div>
     <div class="sbody"><textarea class="cap" id="cap${i}" spellcheck="true" data-f="caption" data-i="${i}" aria-label="Task for step ${i+1}" placeholder="What to do in this step">${esc(t.caption)}</textarea>
       <div class="meta">
         <span class="pw"><span class="dot" style="background:${typeDot(t.tasktype)}"></span><select class="pill" id="tt${i}" data-f="tasktype" data-i="${i}" aria-label="Step type for step ${i+1}">${opt(TASK_TYPES,t.tasktype)}</select></span>
@@ -1198,7 +1212,7 @@ function renderOpt(){ const d=D;
   const flags={AllowPrinting:"Printing",AllowModifyContent:"Modify Contents",AllowCopy:"Copy",AllowModifyAnnotation:"Modify Annotations",AllowFillIn:"Fill In",AllowScreenReaders:"Screen Readers",AllowAssembly:"Assembly",AllowDegradedPrinting:"Degraded Printing"};
   return `<div class="opts">
   <div class="card"><h3>Header</h3>${Object.entries(HEADER_LABELS).map(([k,l])=>`<div class="fr"><label for="h_${k}">${l}</label><input class="f" id="h_${k}" data-h="${k}" value="${esc(d.header[k])}" placeholder="${esc(HEADER_HINTS[k]||"")}" spellcheck="true"></div>`).join("")}
-    <div class="fr"><label>Logo</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${d.logo_id&&d.images[d.logo_id]?`<img class="logoprev" src="${imgURL(d.logo_id)}" alt="Logo">`:'<span class="hint">None</span>'}<button class="lbtn" data-act="logo">Choose…</button>${d.logo_id?'<button class="lbtn danger" data-act="nologo">Remove</button>':""}</div></div>
+    <div class="fr"><label>Logo</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${d.logo_id&&d.images[d.logo_id]?`${imgTag(d.logo_id,"logoprev","Logo")}`:'<span class="hint">None</span>'}<button class="lbtn" data-act="logo">Choose…</button>${d.logo_id?'<button class="lbtn danger" data-act="nologo">Remove</button>':""}</div></div>
     <label class="chk"><input type="checkbox" id="o_rem" data-st="remember_header" ${ST.remember_header?"checked":""}> Remember header for new files</label></div>
   <div class="card"><h3>System</h3>
     <div class="fr"><label for="o_ppp">Default page layout</label><div style="display:flex;gap:6px;flex-wrap:wrap"><select class="s" id="o_ppp" data-o="default_ppp">${PAGE_TYPES.map(x=>`<option value="${x}" ${x===d.default_ppp?"selected":""}>${pageLabel(x)}</option>`).join("")}</select><button class="lbtn" data-act="pppall">Apply to all steps</button></div></div>
@@ -1462,6 +1476,7 @@ function pwaInstall(){
 }
 render();
 const draftReady=restoreDraft();
+try{ navigator.storage?.persist?.().catch(()=>{}); }catch(e){}
 /* "Open with > StepSheet" from Windows Explorer (installed app in Edge or Chrome).
    The manifest registers .soe; the browser hands the chosen file over here.
    Save writes back to that same file (the browser asks once for permission). */
