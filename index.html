@@ -303,6 +303,33 @@ select.pill{border:1px solid var(--edge);border-radius:999px;background:var(--pa
 @media (pointer:coarse){ .ppetile{padding:11px 6px} .ppetile svg{width:60px;height:60px} }
 @media (max-width:760px){ .ppegrid{grid-template-columns:repeat(3,1fr);gap:6px} .ppetile{padding:8px 3px} .ppetile svg{width:50px;height:50px} }
 @media (prefers-reduced-motion:reduce){ .toast{transition:none} }
+/* ---- Phones: one toolbar row, short tab names, and a compact step card that fits on one screen ---- */
+@media (max-width:760px){
+  .bar{gap:6px;padding-top:calc(6px + env(safe-area-inset-top,0px));padding-bottom:8px}
+  .bar-top{flex-basis:100%;gap:8px} .brand{font-size:15px} .mark{width:18px;height:18px}
+  .tb{display:flex;flex-wrap:nowrap;width:100%;gap:6px}
+  .tb .btn{flex:1 1 auto;padding:6px 6px;font-size:14px;text-align:center;min-height:38px;white-space:nowrap}
+  .tabs{flex-wrap:nowrap;gap:2px;padding-top:6px;padding-bottom:6px}
+  .tabs button{padding:6px 12px;font-size:15px}
+  main{padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px))}
+  .cards{gap:8px}
+  .scard{grid-template-columns:34px minmax(0,1fr);gap:8px;padding:8px 10px 10px}
+  .snum{gap:4px} .selbtn svg{width:32px;height:32px}
+  .scard .thumb{width:100%;height:auto;aspect-ratio:16/10;max-height:min(28vh,190px);border-radius:7px}
+  .scard textarea.cap{min-height:60px;padding:7px 9px}
+  .meta{gap:6px}
+  select.pill{font-size:16px!important;min-height:34px;padding-top:2px;padding-bottom:2px}
+  .pw select.pill{padding-left:24px}
+  .tog{font-size:13.5px!important;min-height:34px;padding:2px 10px 2px 8px}
+  .pill-lbl .tl,.imgname{display:none}
+  .addcard{padding:10px}
+  select.pill{padding:2px 2px 2px 8px} .pw select.pill{padding-left:22px} .pw .dot{left:9px}
+}
+@media (max-width:360px){   /* smallest phones / Display Zoom: keep each card to three short rows */
+  .pw select.pill{max-width:142px}
+  .tog{font-size:12px!important;padding:2px 7px 2px 5px;gap:4px}
+  .meta{gap:5px}
+}
 </style>
 
 <header class="bar">
@@ -328,7 +355,7 @@ select.pill{border:1px solid var(--edge);border-radius:999px;background:var(--pa
   <button data-tab="an" class="tab-adv" title="Cycle time, value added, activity and wastes">Analysis</button>
   <button data-tab="es" class="tab-adv" title="Spanish translation">Spanish</button>
   <button data-tab="review" title="Plain-text view for Copilot in the Edge sidebar">Review</button>
-  <button data-tab="opt" class="tab-set">⚙ Document settings</button>
+  <button data-tab="opt" class="tab-set" aria-label="Document settings"><span class="lbl-full">⚙ Document settings</span><span class="lbl-short">⚙ Settings</span></button>
 </nav>
 <div class="mainwrap"><main id="main"></main></div>
 <div class="status" id="status"></div>
@@ -1045,7 +1072,7 @@ function renderVI(){
         <span class="pw"><span class="dot" style="background:${typeDot(t.tasktype)}"></span><select class="pill" id="tt${i}" data-f="tasktype" data-i="${i}" aria-label="Step type for step ${i+1}">${opt(TASK_TYPES,t.tasktype)}</select></span>
         <label class="tog q" title="${qt?"This step is already a Quality step.":"Also integral to quality. It prints inside a Quality octagon."}"><input type="checkbox" data-q="${i}" ${t.quality||qt?"checked":""} ${qt?"disabled":""}> Integral to quality</label>
         <select class="pill" id="pp${i}" data-f="pics_per_page" data-i="${i}" aria-label="Page layout for step ${i+1}" title="Page layout in the PDF">${opt(PAGE_TYPES,t.pics_per_page,pageLabel)}</select>
-        <label class="pill-lbl">Text <select class="pill" id="fs${i}" data-f="font_size" data-i="${i}" aria-label="Text size for step ${i+1}">${[8,9,10,11,12,13,14].map(x=>`<option value="${x}" ${String(x)===String(t.font_size)?"selected":""}>${x} pt</option>`).join("")}</select></label>
+        <label class="pill-lbl"><span class="tl">Text</span> <select class="pill" id="fs${i}" data-f="font_size" data-i="${i}" aria-label="Text size for step ${i+1}">${[8,9,10,11,12,13,14].map(x=>`<option value="${x}" ${String(x)===String(t.font_size)?"selected":""}>${x} pt</option>`).join("")}</select></label>
         ${t.image_title?`<span class="imgname" title="${esc(t.image_path||t.image_title)}">${esc(t.image_title)}</span>`:""}
       </div></div>
   </article>`; }).join("")}<button class="addcard rowtool" data-act="add">＋ Add step</button></div>`; }

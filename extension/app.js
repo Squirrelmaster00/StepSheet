@@ -697,7 +697,7 @@ function renderVI(){
         <span class="pw"><span class="dot" style="background:${typeDot(t.tasktype)}"></span><select class="pill" id="tt${i}" data-f="tasktype" data-i="${i}" aria-label="Step type for step ${i+1}">${opt(TASK_TYPES,t.tasktype)}</select></span>
         <label class="tog q" title="${qt?"This step is already a Quality step.":"Also integral to quality. It prints inside a Quality octagon."}"><input type="checkbox" data-q="${i}" ${t.quality||qt?"checked":""} ${qt?"disabled":""}> Integral to quality</label>
         <select class="pill" id="pp${i}" data-f="pics_per_page" data-i="${i}" aria-label="Page layout for step ${i+1}" title="Page layout in the PDF">${opt(PAGE_TYPES,t.pics_per_page,pageLabel)}</select>
-        <label class="pill-lbl">Text <select class="pill" id="fs${i}" data-f="font_size" data-i="${i}" aria-label="Text size for step ${i+1}">${[8,9,10,11,12,13,14].map(x=>`<option value="${x}" ${String(x)===String(t.font_size)?"selected":""}>${x} pt</option>`).join("")}</select></label>
+        <label class="pill-lbl"><span class="tl">Text</span> <select class="pill" id="fs${i}" data-f="font_size" data-i="${i}" aria-label="Text size for step ${i+1}">${[8,9,10,11,12,13,14].map(x=>`<option value="${x}" ${String(x)===String(t.font_size)?"selected":""}>${x} pt</option>`).join("")}</select></label>
         ${t.image_title?`<span class="imgname" title="${esc(t.image_path||t.image_title)}">${esc(t.image_title)}</span>`:""}
       </div></div>
   </article>`; }).join("")}<button class="addcard rowtool" data-act="add">＋ Add step</button></div>`; }
