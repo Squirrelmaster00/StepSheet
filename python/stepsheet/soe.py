@@ -50,6 +50,21 @@ HEADER_LABELS = {
 }
 
 
+_LR = ("selected", "machine", "labor")
+KNOWN_SOE = {  # tags StepSheet reads itself, by parent; anything else is kept verbatim
+    "roots": {"mainroot", "imageroot"},
+    "mainroot": {"version", "FileInfo", "FileProperties", "isDirty", "FileData"},
+    "FileInfo": {"name", "url"},
+    "FileProperties": set(HEADER_LABELS) | {k + "_es" for k in HEADER_LABELS} | {"Advanced", "Borders", "Shapes", "Template", "SOETitle", "Encrypt", "password", "Font", "DefaultPPP", "logo"} | set(SECURITY_FLAGS),
+    "logo": {"imagepath", "imageid"},
+    "FileData": {"Task"},
+    "Task": {"VmsInfo", "Analysis", "cycletime", "tasktype", "PicsPerPage", "caption", "customtype", "quality", "caption_es", "caption_es_src", "code"},
+    "VmsInfo": {"imagetitle", "imagepath", "imageid", "FontSize"},
+    "Analysis": {"Muda", "Setup", "Work", "ValueAdded", "NonValueAdded", "TQC"},
+    "Muda": set(WASTES), "Setup": set(_LR), "Work": set(_LR),
+}
+
+
 def new_image_id() -> str:
     """GUID-shaped id that is also a valid XML tag name (starts with A-F)."""
     h = "%032X" % random.getrandbits(128)
@@ -85,6 +100,7 @@ class Task:
     value_added: bool = False
     non_value_added: bool = True
     tqc: bool = False
+    extra: dict = field(default_factory=dict)  # parent path -> [verbatim XML of tags StepSheet doesn't model]
 
     @property
     def value_class(self) -> str:
@@ -116,6 +132,7 @@ class Document:
     logo_id: str = ""
     tasks: list = field(default_factory=list)
     images: dict = field(default_factory=dict)  # id -> raw image bytes
+    extra: dict = field(default_factory=dict)   # parent path -> [verbatim XML of tags StepSheet doesn't model]
 
     # ---------------------------------------------------------------- load
     @classmethod
@@ -126,6 +143,23 @@ class Document:
             root = ET.parse(path_or_bytes).getroot()
         m = root.find("mainroot")
         d = cls()
+
+        # Round-trip fidelity: tags StepSheet doesn't model are kept verbatim under their
+        # parent's path and written back inside the same parent on save (mirrors the web app).
+        def keep(el, path, bag):
+            if el is None or path not in KNOWN_SOE:
+                return
+            for c in el:
+                if c.tag not in KNOWN_SOE[path]:
+                    c2 = ET.fromstring(ET.tostring(c, encoding="unicode"))
+                    c2.tail = None
+                    bag.setdefault(path, []).append(ET.tostring(c2, encoding="unicode"))
+        keep(root, "roots", d.extra)
+        keep(m, "mainroot", d.extra)
+        keep(m.find("FileInfo"), "FileInfo", d.extra)
+        keep(m.find("FileProperties"), "FileProperties", d.extra)
+        keep(m.find("FileProperties/logo"), "logo", d.extra)
+        keep(m.find("FileData"), "FileData", d.extra)
         d.version = m.findtext("version", "4.0")
         d.name = m.findtext("FileInfo/name", "untitled.soe")
         d.url = m.findtext("FileInfo/url", "")
@@ -173,6 +207,12 @@ class Document:
                 task.value_added = _b(a.findtext("ValueAdded", "false"))
                 task.non_value_added = _b(a.findtext("NonValueAdded", "false"))
                 task.tqc = _b(a.findtext("TQC", "false"))
+            keep(t, "Task", task.extra)
+            keep(t.find("VmsInfo"), "VmsInfo", task.extra)
+            keep(a, "Analysis", task.extra)
+            if a is not None:
+                for g in ("Muda", "Setup", "Work"):
+                    keep(a.find(g), g, task.extra)
             d.tasks.append(task)
         imgs = root.find("imageroot/images")
         if imgs is not None:
@@ -194,9 +234,12 @@ class Document:
             val = "" if val is None else str(val)
             return f"<{tag}><![CDATA[{val}]]></{tag}>"
 
+        def X(bag, path):  # unknown tags kept from the opened file
+            return "".join((bag or {}).get(path, []))
+
         o = ['<?xml version="1.0" encoding="ISO-8859-1"?><roots><mainroot>']
         o.append(cd_keep("version", self.version))
-        o.append("<FileInfo>" + cd_keep("name", self.name) + cd_keep("url", self.url) + "</FileInfo>")
+        o.append("<FileInfo>" + cd_keep("name", self.name) + cd_keep("url", self.url) + X(self.extra, "FileInfo") + "</FileInfo>")
         o.append("<FileProperties>")
         for k in HEADER_LABELS:
             o.append(cd_keep(k, self.header.get(k, "")))
@@ -211,27 +254,27 @@ class Document:
             o.append(cd(k, self.security.get(k, "")))
         o.append(cd_keep("Font", self.font))
         o.append(cd_keep("DefaultPPP", self.default_ppp))
-        o.append("<logo>" + cd("imagepath", self.logo_path) + cd("imageid", self.logo_id) + "</logo>")
+        o.append("<logo>" + cd("imagepath", self.logo_path) + cd("imageid", self.logo_id) + X(self.extra, "logo") + "</logo>")
         for k in HEADER_LABELS:
             if (self.header_es.get(k, "") or "").strip():
                 o.append(cd_keep(k + "_es", self.header_es[k]))
-        o.append("</FileProperties>")
+        o.append(X(self.extra, "FileProperties") + "</FileProperties>")
         o.append(cd_keep("isDirty", "false"))
         o.append("<FileData>")
         for t in self.tasks:
             o.append("<Task><VmsInfo>")
             o.append(cd("imagetitle", t.image_title) + cd("imagepath", t.image_path)
-                     + cd("imageid", t.image_id) + cd_keep("FontSize", t.font_size))
+                     + cd("imageid", t.image_id) + cd_keep("FontSize", t.font_size) + X(t.extra, "VmsInfo"))
             o.append("</VmsInfo><Analysis><Muda>")
             o.extend(cd_keep(w, _s(t.wastes.get(w, False))) for w in WASTES)
-            o.append("</Muda><Setup>")
+            o.append(X(t.extra, "Muda") + "</Muda><Setup>")
             o.extend(cd_keep(k, _s(t.setup.get(k, False))) for k in ("selected", "machine", "labor"))
-            o.append("</Setup><Work>")
+            o.append(X(t.extra, "Setup") + "</Setup><Work>")
             o.extend(cd_keep(k, _s(t.work.get(k, False))) for k in ("selected", "machine", "labor"))
-            o.append("</Work>")
+            o.append(X(t.extra, "Work") + "</Work>")
             o.append(cd_keep("ValueAdded", _s(t.value_added)) + cd_keep("NonValueAdded", _s(t.non_value_added))
                      + cd_keep("TQC", _s(t.tqc)))
-            o.append("</Analysis>")
+            o.append(X(t.extra, "Analysis") + "</Analysis>")
             o.append(cd("cycletime", t.cycletime) + cd_keep("tasktype", CUSTOM_TYPES.get(t.tasktype, t.tasktype))
                      + cd_keep("PicsPerPage", t.pics_per_page) + cd_keep("caption", t.caption))
             if t.tasktype in CUSTOM_TYPES:
@@ -242,8 +285,8 @@ class Document:
                 o.append(cd_keep("caption_es", t.caption_es) + cd_keep("caption_es_src", t.caption_es_src))
             if (t.code or "").strip():
                 o.append(cd_keep("code", t.code.strip()))
-            o.append("</Task>")
-        o.append("</FileData></mainroot><imageroot><images>")
+            o.append(X(t.extra, "Task") + "</Task>")
+        o.append(X(self.extra, "FileData") + "</FileData>" + X(self.extra, "mainroot") + "</mainroot><imageroot><images>")
         used = self.used_image_ids()
         for iid, data in self.images.items():
             if iid not in used:
@@ -251,7 +294,7 @@ class Document:
             b = base64.b64encode(data).decode("ascii")
             wrapped = "\n".join(b[i:i + 76] for i in range(0, len(b), 76))
             o.append(f"<{iid}>{wrapped}\n</{iid}>")
-        o.append("</images></imageroot></roots>")
+        o.append("</images></imageroot>" + X(self.extra, "roots") + "</roots>")
         return "".join(o).encode("iso-8859-1", errors="replace")
 
     def save(self, path: str) -> None:

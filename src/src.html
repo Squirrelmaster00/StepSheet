@@ -425,6 +425,13 @@ function blankDoc(){ const d={name:"untitled.soe",url:"",version:"4.0",header:Ob
   const first=blankTask(d.default_ppp); if(ST.ppe_first_step){ first.caption="Required PPE"; first.tasktype="Safety"; } d.tasks.push(first); return d; }
 const isT=v=>String(v).trim().toLowerCase()==="true";
 
+const KNOWN_SOE=(()=>{ const S=a=>new Set(a); const lr=["selected","machine","labor"];
+  return { roots:S(["mainroot","imageroot"]), mainroot:S(["version","FileInfo","FileProperties","isDirty","FileData"]), FileInfo:S(["name","url"]),
+    FileProperties:S([...Object.keys(HEADER_LABELS),...Object.keys(HEADER_LABELS).map(k=>k+"_es"),"Advanced","Borders","Shapes","Template","SOETitle","Encrypt","password",...SECURITY_FLAGS,"Font","DefaultPPP","logo"]),
+    logo:S(["imagepath","imageid"]), FileData:S(["Task"]),
+    Task:S(["VmsInfo","Analysis","cycletime","tasktype","PicsPerPage","caption","customtype","quality","caption_es","caption_es_src","code"]),
+    VmsInfo:S(["imagetitle","imagepath","imageid","FontSize"]), Analysis:S(["Muda","Setup","Work","ValueAdded","NonValueAdded","TQC"]),
+    Muda:S(WASTES), Setup:S(lr), Work:S(lr) }; })();
 function parseSoe(text){
   if(!text || text.length<30 || text.indexOf("<mainroot")===-1)
     throw new Error("This file looks empty or isn't a .soe file. If it's in OneDrive, open it once in the OneDrive app so it finishes downloading, then try again.");
@@ -440,6 +447,14 @@ function parseSoe(text){
   const root=x.documentElement, m=kid(root,"mainroot");
   if(!m) throw new Error("This file has no work instruction data in it.");
   const d=blankDoc(); d.tasks=[];
+  // Round-trip fidelity: any tag StepSheet doesn't model is kept verbatim (as XML text) under the
+  // path of its parent and written back in the same parent on save, so nothing the original
+  // program stores is lost. KNOWN_SOE lists the tags StepSheet reads itself.
+  const xs=new XMLSerializer(), keep=(el,path,bag)=>{ if(!el) return; const known=KNOWN_SOE[path]; if(!known) return;
+    for(const c of el.children) if(!known.has(c.tagName)) (bag[path]||(bag[path]=[])).push(xs.serializeToString(c)); };
+  d.extra={}; keep(root,"roots",d.extra);
+  if(iStart!==-1){ const ie=text.indexOf("</imageroot>"), re_=text.lastIndexOf("</roots>"); if(ie!==-1&&re_>ie){ const tail=text.slice(ie+12,re_).trim(); if(tail) (d.extra.roots||(d.extra.roots=[])).push(tail); } } keep(m,"mainroot",d.extra); keep(kid(m,"FileInfo"),"FileInfo",d.extra);
+  keep(kid(m,"FileProperties"),"FileProperties",d.extra); keep(kid(kid(m,"FileProperties"),"logo"),"logo",d.extra); keep(kid(m,"FileData"),"FileData",d.extra);
   d.version=g(m,"version","4.0"); d.name=g(m,"FileInfo/name","untitled.soe"); d.url=g(m,"FileInfo/url","");
   const p=kid(m,"FileProperties");
   if(p){ for(const k in HEADER_LABELS){ d.header[k]=g(p,k,""); d.header_es[k]=g(p,k+"_es",""); }
@@ -456,6 +471,7 @@ function parseSoe(text){
     task.quality=isT(g(t,"quality","false")); const ct=g(t,"customtype").trim(); if(CUSTOM_TYPES[ct]) task.tasktype=ct;
     if(!TASK_TYPES.includes(task.tasktype)) task.tasktype="Work Content";
     task.caption_es=g(t,"caption_es"); task.caption_es_src=g(t,"caption_es_src"); task.code=g(t,"code");
+    { const e={}; keep(t,"Task",e); keep(kid(t,"VmsInfo"),"VmsInfo",e); keep(a,"Analysis",e); keep(kid(a,"Muda"),"Muda",e); keep(kid(a,"Setup"),"Setup",e); keep(kid(a,"Work"),"Work",e); if(Object.keys(e).length) task.extra=e; }
     if(a){ task.wastes=Object.fromEntries(WASTES.map(w=>[w,isT(g(a,"Muda/"+w,"false"))]));
       for(const grp of ["Setup","Work"]) task[grp.toLowerCase()]=Object.fromEntries(["selected","machine","labor"].map(k=>[k,isT(g(a,grp+"/"+k,"false"))]));
       task.value_added=isT(g(a,"ValueAdded","false")); task.non_value_added=isT(g(a,"NonValueAdded","false")); task.tqc=isT(g(a,"TQC","false")); }
@@ -469,25 +485,26 @@ function serializeSoe(d){
   const cd=(t,v)=>{ v=String(v??""); return v===""?`<${t}/>`:`<${t}><![CDATA[${cdv(tidy(v))}]]></${t}>`; };
   const ck=(t,v)=>`<${t}><![CDATA[${cdv(tidy(v))}]]></${t}>`;
   const b=v=>v?"true":"false";
+  const X=(bag,path)=>((bag&&bag[path])||[]).join("");   // unknown tags kept from the opened file
   const o=['<?xml version="1.0" encoding="ISO-8859-1"?><roots><mainroot>'];
-  o.push(ck("version",d.version||"4.0"),"<FileInfo>",ck("name",d.name),ck("url",d.url),"</FileInfo><FileProperties>");
+  o.push(ck("version",d.version||"4.0"),"<FileInfo>",ck("name",d.name),ck("url",d.url),X(d.extra,"FileInfo"),"</FileInfo><FileProperties>");
   for(const k in HEADER_LABELS) o.push(ck(k,d.header[k]||""));
   o.push(ck("Advanced",b(d.advanced)),ck("Borders",b(d.borders)),ck("Shapes",b(d.shapes)),ck("Template",d.template||"Standard"),ck("SOETitle",b(d.soe_title)),ck("Encrypt",b(d.encrypt)),cd("password",d.password));
   for(const k of SECURITY_FLAGS) o.push(cd(k,d.security[k]||""));
-  o.push(ck("Font",d.font||"helvetica"),ck("DefaultPPP",d.default_ppp),"<logo>",cd("imagepath",d.logo_path),cd("imageid",d.logo_id),"</logo>",...Object.keys(HEADER_LABELS).map(k=>(d.header_es&&d.header_es[k]||"").trim()?ck(k+"_es",d.header_es[k]):""),"</FileProperties>",ck("isDirty","false"),"<FileData>");
+  o.push(ck("Font",d.font||"helvetica"),ck("DefaultPPP",d.default_ppp),"<logo>",cd("imagepath",d.logo_path),cd("imageid",d.logo_id),X(d.extra,"logo"),"</logo>",...Object.keys(HEADER_LABELS).map(k=>(d.header_es&&d.header_es[k]||"").trim()?ck(k+"_es",d.header_es[k]):""),X(d.extra,"FileProperties"),"</FileProperties>",ck("isDirty","false"),"<FileData>");
   for(const t of d.tasks){
-    o.push("<Task><VmsInfo>",cd("imagetitle",t.image_title),cd("imagepath",t.image_path),cd("imageid",t.image_id),ck("FontSize",t.font_size||"12"),"</VmsInfo><Analysis><Muda>");
+    o.push("<Task><VmsInfo>",cd("imagetitle",t.image_title),cd("imagepath",t.image_path),cd("imageid",t.image_id),ck("FontSize",t.font_size||"12"),X(t.extra,"VmsInfo"),"</VmsInfo><Analysis><Muda>");
     for(const w of WASTES) o.push(ck(w,b(t.wastes[w])));
-    o.push("</Muda><Setup>"); for(const k of ["selected","machine","labor"]) o.push(ck(k,b(t.setup[k])));
-    o.push("</Setup><Work>"); for(const k of ["selected","machine","labor"]) o.push(ck(k,b(t.work[k])));
-    o.push("</Work>",ck("ValueAdded",b(t.value_added)),ck("NonValueAdded",b(t.non_value_added)),ck("TQC",b(t.tqc)),"</Analysis>",
+    o.push(X(t.extra,"Muda"),"</Muda><Setup>"); for(const k of ["selected","machine","labor"]) o.push(ck(k,b(t.setup[k])));
+    o.push(X(t.extra,"Setup"),"</Setup><Work>"); for(const k of ["selected","machine","labor"]) o.push(ck(k,b(t.work[k])));
+    o.push(X(t.extra,"Work"),"</Work>",ck("ValueAdded",b(t.value_added)),ck("NonValueAdded",b(t.non_value_added)),ck("TQC",b(t.tqc)),X(t.extra,"Analysis"),"</Analysis>",
       cd("cycletime",t.cycletime),ck("tasktype",CUSTOM_TYPES[t.tasktype]||t.tasktype),ck("PicsPerPage",t.pics_per_page),ck("caption",t.caption),
-      CUSTOM_TYPES[t.tasktype]?ck("customtype",t.tasktype):"",isQ(t)?ck("quality","true"):"",(t.caption_es||"").trim()?ck("caption_es",t.caption_es)+ck("caption_es_src",t.caption_es_src||""):"",(t.code||"").trim()?ck("code",t.code.trim()):"","</Task>");
+      CUSTOM_TYPES[t.tasktype]?ck("customtype",t.tasktype):"",isQ(t)?ck("quality","true"):"",(t.caption_es||"").trim()?ck("caption_es",t.caption_es)+ck("caption_es_src",t.caption_es_src||""):"",(t.code||"").trim()?ck("code",t.code.trim()):"",X(t.extra,"Task"),"</Task>");
   }
-  o.push("</FileData></mainroot><imageroot><images>");
+  o.push(X(d.extra,"FileData"),"</FileData>",X(d.extra,"mainroot"),"</mainroot><imageroot><images>");
   const used=new Set(d.tasks.map(t=>t.image_id).filter(Boolean)); if(d.logo_id) used.add(d.logo_id);
   for(const [id,b64] of Object.entries(d.images)){ if(!used.has(id)) continue; o.push(`<${id}>`,b64.replace(/.{76}/g,"$&\n").replace(/\n$/,""),`\n</${id}>`); }
-  o.push("</images></imageroot></roots>");
+  o.push("</images></imageroot>",X(d.extra,"roots"),"</roots>");
   return latin1(o.join(""));
 }
 
@@ -1032,7 +1049,7 @@ function reviewPaste(r){
       const on=new Set([...d.querySelectorAll("[data-c]:checked")].map(c=>+c.dataset.c)), seen=new Set(), next=[];
       rows.forEach(w=>{ w.si.forEach(j=>seen.add(j));
         if(on.has(w.i)){ const t=blankTask(D.default_ppp); t.caption=w.s.caption; t.tasktype=w.s.type; t.quality=w.s.type!=="Quality"&&(!!w.s.quality||w.si.some(j=>isQ(old[j]))); const o=w.si.length?old[w.si[0]]:null;
-          if(o){ t.image_id=o.image_id; t.image_title=o.image_title; t.image_path=o.image_path; t.pics_per_page=o.pics_per_page; t.font_size=o.font_size; if(w.si.length<=1) t.cycletime=o.cycletime; } t.code=w.codeNew; next.push(t); }
+          if(o){ if(o.extra) t.extra=o.extra; t.image_id=o.image_id; t.image_title=o.image_title; t.image_path=o.image_path; t.pics_per_page=o.pics_per_page; t.font_size=o.font_size; if(w.si.length<=1) t.cycletime=o.cycletime; } t.code=w.codeNew; next.push(t); }
         else w.si.forEach(j=>next.push(old[j])); });
       old.forEach((o,j)=>{ if(!seen.has(j)) next.push(o); });  // never silently drop an original
       D.tasks=next.length?next:old; close(); changed(true); toast(`Applied ${on.size} of ${r.steps.length} changes`); };
